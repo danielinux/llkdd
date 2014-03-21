@@ -18,7 +18,7 @@
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Rafael do Nascimento Pereira");
-MODULE_DESCRIPTION("dev one driver");
+MODULE_DESCRIPTION("devone driver");
 MODULE_VERSION("0.1");
 
 #define NR_DEVS 1
@@ -26,6 +26,18 @@ MODULE_VERSION("0.1");
 
 static int devone_major = 0;
 static int devone_minor = 0;
+
+
+struct devone_dev {
+	struct cdev dev_cdev;
+};
+
+static struct file_operations devone_fops = {
+	.owner   = THIS_MODULE,
+};
+
+struct devone_dev *devone;
+
 
 void devone_open(void)
 {
@@ -43,6 +55,15 @@ void devone_read(void)
 
 }
 
+static void __exit devone_exit(void)
+{
+	dev_t dev;
+	dev = MKDEV(devone_major, devone_minor);
+
+	kfree(devone);
+	unregister_chrdev_region(dev, NR_DEVS);
+}
+
 static int __init devone_init(void)
 {
 	int ret = 0;
@@ -56,16 +77,21 @@ static int __init devone_init(void)
 		return ret;
 	}
 
+	devone = kmalloc(sizeof(struct devone_dev), GFP_KERNEL);
+
+	if (!devone) {
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	memset(devone, 0, sizeof(struct devone_dev));
+
+	return 0;
+fail:
+	devone_exit();
 	return ret;
 }
 
-static void __exit devone_exit(void)
-{
-	dev_t dev;
-	dev = MKDEV(devone_major, devone_minor);
-
-	unregister_chrdev_region(dev, NR_DEVS);
-}
 
 module_init(devone_init);
 module_exit(devone_exit);
