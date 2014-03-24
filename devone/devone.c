@@ -14,6 +14,8 @@
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
+#include <linux/proc_fs.h>
+#include <linux/fcntl.h>
 
 
 MODULE_LICENSE("GPL");
@@ -32,6 +34,7 @@ ssize_t devone_read(struct file *f, char __user *u, size_t size, loff_t *l);
 
 int devone_open(struct inode *inode, struct file *filp);
 
+int devone_release(struct inode *inode, struct file *filp);
 
 struct devone_dev {
 	struct cdev devone_cdev;
@@ -40,7 +43,8 @@ struct devone_dev {
 static struct file_operations devone_fops = {
 	.owner   = THIS_MODULE,
 	.read    = devone_read,
-	.open    = devone_open
+	.open    = devone_open,
+	.release = devone_release,
 };
 
 struct devone_dev *devone;
@@ -52,9 +56,10 @@ ssize_t devone_read(struct file *f, char __user *u, size_t size, loff_t *l)
 	return 0;
 }
 
-void devone_release(void)
-{
 
+int devone_release(struct inode *inode, struct file *filp)
+{
+	return 0;
 }
 
 
