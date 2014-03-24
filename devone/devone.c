@@ -28,20 +28,28 @@ static int devone_major = 0;
 static int devone_minor = 0;
 
 
+ssize_t devone_read(struct file *f, char __user *u, size_t size, loff_t *l);
+
+int devone_open(struct inode *inode, struct file *filp);
+
+
 struct devone_dev {
-	struct cdev dev_cdev;
+	struct cdev devone_cdev;
 };
 
 static struct file_operations devone_fops = {
 	.owner   = THIS_MODULE,
+	.read    = devone_read,
+	.open    = devone_open
 };
 
 struct devone_dev *devone;
 
 
-void devone_open(void)
+ssize_t devone_read(struct file *f, char __user *u, size_t size, loff_t *l)
 {
 
+	return 0;
 }
 
 void devone_release(void)
@@ -50,9 +58,10 @@ void devone_release(void)
 }
 
 
-void devone_read(void)
+int devone_open(struct inode *inode, struct file *filp)
 {
 
+	return 0;
 }
 
 static void __exit devone_exit(void)
@@ -60,6 +69,7 @@ static void __exit devone_exit(void)
 	dev_t dev;
 	dev = MKDEV(devone_major, devone_minor);
 
+	cdev_del(&devone->devone_cdev);
 	kfree(devone);
 	unregister_chrdev_region(dev, NR_DEVS);
 }
@@ -67,6 +77,8 @@ static void __exit devone_exit(void)
 static int __init devone_init(void)
 {
 	int ret = 0;
+	int err = 0;
+	int devno;
 	dev_t dev = 0;
 
 	ret = alloc_chrdev_region(&dev, devone_minor, NR_DEVS, "devone");
@@ -86,6 +98,14 @@ static int __init devone_init(void)
 
 	memset(devone, 0, sizeof(struct devone_dev));
 
+	devno = MKDEV(devone_major, devone_minor);
+	cdev_init(&devone->devone_cdev, &devone_fops);
+	devone->devone_cdev.owner = THIS_MODULE;
+	devone->devone_cdev.ops = &devone_fops;
+	err = cdev_add(&devone->devone_cdev, devno, NR_DEVS);
+
+	if (err)
+		printk(KERN_NOTICE "Error %d adding /dev/one", err);
 	return 0;
 fail:
 	devone_exit();
