@@ -1,8 +1,8 @@
 #
-# Makefile devone driver
+# Makefile one driver
 #
 
-TARGET = devone
+TARGET = one
 
 ifneq ($(KERNELRELEASE),)
 # call from kernel build system
