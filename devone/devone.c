@@ -23,11 +23,16 @@ MODULE_AUTHOR("Rafael do Nascimento Pereira");
 MODULE_DESCRIPTION("devone driver");
 MODULE_VERSION("0.1");
 
+#define DEVNAME "one"
 #define NR_DEVS 1
 
 
 static int devone_major = 0;
 static int devone_minor = 0;
+
+struct class *devone_class = NULL;
+
+struct device *devone_device = NULL;
 
 
 ssize_t devone_read(struct file *f, char __user *u, size_t size, loff_t *l);
@@ -47,7 +52,7 @@ static struct file_operations devone_fops = {
 	.release = devone_release,
 };
 
-struct devone_dev *devone;
+struct devone_dev *devone = NULL;
 
 
 ssize_t devone_read(struct file *f, char __user *u, size_t size, loff_t *l)
@@ -74,11 +79,22 @@ static void __exit devone_exit(void)
 	dev_t dev;
 	dev = MKDEV(devone_major, devone_minor);
 
+	if (devone_device)
+		device_destroy(devone_class, dev);
+
+	if (devone_class)
+		class_destroy(devone_class);
+
 	cdev_del(&devone->devone_cdev);
 	kfree(devone);
 	unregister_chrdev_region(dev, NR_DEVS);
 }
 
+/*
+ * struct device *device_create(struct class *cls, struct device *parent,
+			     dev_t devt, void *drvdata,
+			     const char *fmt, ...);
+ */
 static int __init devone_init(void)
 {
 	int ret = 0;
@@ -86,7 +102,7 @@ static int __init devone_init(void)
 	int devno;
 	dev_t dev = 0;
 
-	ret = alloc_chrdev_region(&dev, devone_minor, NR_DEVS, "devone");
+	ret = alloc_chrdev_region(&dev, devone_minor, NR_DEVS, "one");
 	devone_major = MAJOR(dev);
 
 	if (ret < 0) {
@@ -94,6 +110,7 @@ static int __init devone_init(void)
 		return ret;
 	}
 
+	printk(KERN_INFO "<Major, Minor>: <%d, %d>\n", MAJOR(dev), MINOR(dev));
 	devone = kmalloc(sizeof(struct devone_dev), GFP_KERNEL);
 
 	if (!devone) {
@@ -103,14 +120,34 @@ static int __init devone_init(void)
 
 	memset(devone, 0, sizeof(struct devone_dev));
 
+	devone_class = class_create(THIS_MODULE, DEVNAME);
+
+	if (!devone_class) {
+		printk(KERN_ERR " Error creating device class %s", DEVNAME);
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	devone_device = device_create(devone_class, NULL, dev, NULL, DEVNAME);
+
+	if (!devone_device) {
+		printk(KERN_ERR " Error creating device %s", DEVNAME);
+		ret = -ENOMEM;
+		goto fail;
+	}
+
 	devno = MKDEV(devone_major, devone_minor);
 	cdev_init(&devone->devone_cdev, &devone_fops);
 	devone->devone_cdev.owner = THIS_MODULE;
 	devone->devone_cdev.ops = &devone_fops;
 	err = cdev_add(&devone->devone_cdev, devno, NR_DEVS);
 
-	if (err)
+	if (err) {
 		printk(KERN_NOTICE "Error %d adding /dev/one", err);
+		goto fail;
+	}
+
+
 	return 0;
 fail:
 	devone_exit();
