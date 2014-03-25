@@ -16,6 +16,8 @@
 #include <linux/fs.h>
 #include <linux/proc_fs.h>
 #include <linux/fcntl.h>
+#include <asm/uaccess.h>
+
 
 
 MODULE_LICENSE("GPL");
@@ -32,9 +34,9 @@ static int one_major = 0;
 static int one_minor = 0;
 
 struct class *one_class = NULL;
-
 struct device *one_device = NULL;
 
+char c = 0;
 
 ssize_t one_read(struct file *f, char __user *u, size_t size, loff_t *l);
 
@@ -58,8 +60,11 @@ struct one_dev *one = NULL;
 
 ssize_t one_read(struct file *f, char __user *u, size_t size, loff_t *l)
 {
-
-	return 0;
+	c = 1;
+	if (copy_to_user(u, &c, 1) != 0)
+		return -EFAULT;
+	else
+		return 1;
 }
 
 
@@ -71,7 +76,6 @@ int one_release(struct inode *inode, struct file *filp)
 
 int one_open(struct inode *inode, struct file *filp)
 {
-
 	return 0;
 }
 
@@ -111,7 +115,7 @@ static int __init one_init(void)
 		return ret;
 	}
 
-	printk(KERN_INFO "<Major, Minor>: <%d, %d>\n", MAJOR(dev), MINOR(dev));
+	printk(KERN_INFO "%s<Major, Minor>: <%d, %d>\n", DEVNAME, MAJOR(dev), MINOR(dev));
 	one = kmalloc(sizeof(struct one_dev), GFP_KERNEL);
 
 	if (!one) {
