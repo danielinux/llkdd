@@ -62,6 +62,9 @@ struct one_dev {
 	struct cdev one_cdev;
 };
 
+/* define the driver file operations. These are function pointers used by
+ * kernel when a call from user space is perfomed 
+ */
 static struct file_operations one_fops = {
 	.owner   = THIS_MODULE,
 	.read    = one_read,
@@ -76,6 +79,8 @@ struct one_dev *one = NULL;
 ssize_t one_read(struct file *f, char __user *u, size_t size, loff_t *l)
 {
 	c = 1;
+
+	/* copy the buffer to user space */
 	if (copy_to_user(u, &c, 1) != 0)
 		return -EFAULT;
 	else
