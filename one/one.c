@@ -1,7 +1,21 @@
 /*
  * /dev/one driver
  *
- * Copyright (C) 2014 Rafael do Nascimento Pereira
+ * Copyright (C) 2014 Rafael do Nascimento Pereira <rnp@25ghz.net>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * Dummy character device driver that performs the same functionality
+ * found on /dev/zero, except the read output is ones. This is not a
+ * practical driver, it is just written for learning purposes.
  *
  */
 
@@ -19,9 +33,9 @@
 #include <asm/uaccess.h>
 
 
-
+/* Driver infos */
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Rafael do Nascimento Pereira");
+MODULE_AUTHOR("Rafael do Nascimento Pereira <rnp@25ghz.net>");
 MODULE_DESCRIPTION("one driver");
 MODULE_VERSION("0.1");
 
@@ -58,6 +72,7 @@ static struct file_operations one_fops = {
 struct one_dev *one = NULL;
 
 
+/* The read() file opetation, it returns only a "1" character to user space */
 ssize_t one_read(struct file *f, char __user *u, size_t size, loff_t *l)
 {
 	c = 1;
@@ -79,6 +94,7 @@ int one_open(struct inode *inode, struct file *filp)
 	return 0;
 }
 
+/* dealocate the drivers data and unload it from kernel space memory */
 static void __exit one_exit(void)
 {
 	dev_t dev;
@@ -96,9 +112,13 @@ static void __exit one_exit(void)
 }
 
 /*
- * struct device *device_create(struct class *cls, struct device *parent,
-			     dev_t devt, void *drvdata,
-			     const char *fmt, ...);
+ * Initializes the driver and create the /dev/ and /sys/ files. For further
+ * information see:
+ *
+ * include/cdev.h
+ * include/device.h
+ * include/module.h
+ * include/fs.h
  */
 static int __init one_init(void)
 {
@@ -107,6 +127,7 @@ static int __init one_init(void)
 	int devno;
 	dev_t dev = 0;
 
+	/* allocates a major and minor dynamically */
 	ret = alloc_chrdev_region(&dev, one_minor, NR_DEVS, DEVNAME);
 	one_major = MAJOR(dev);
 
@@ -125,6 +146,7 @@ static int __init one_init(void)
 
 	memset(one, 0, sizeof(struct one_dev));
 
+	/* creates the device class under /sys */
 	one_class = class_create(THIS_MODULE, CLASSNAME);
 
 	if (!one_class) {
@@ -133,6 +155,7 @@ static int __init one_init(void)
 		goto fail;
 	}
 
+	/* creates the device class under /dev */
 	one_device = device_create(one_class, NULL, dev, NULL, DEVNAME);
 
 	if (!one_device) {
@@ -141,6 +164,7 @@ static int __init one_init(void)
 		goto fail;
 	}
 
+	/* char device registration */
 	devno = MKDEV(one_major, one_minor);
 	cdev_init(&one->one_cdev, &one_fops);
 	one->one_cdev.owner = THIS_MODULE;
@@ -149,9 +173,9 @@ static int __init one_init(void)
 
 	if (err) {
 		printk(KERN_NOTICE "Error %d adding /dev/one", err);
+		ret = err;
 		goto fail;
 	}
-
 
 	return 0;
 fail:
@@ -159,6 +183,6 @@ fail:
 	return ret;
 }
 
-
+/* Declare the driver constructor/destructor */
 module_init(one_init);
 module_exit(one_exit);
