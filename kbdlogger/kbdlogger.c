@@ -13,9 +13,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * Dummy character device driver that performs the same functionality
- * found on /dev/zero, except the read output is ones. This is not a
- * practical driver, it is just written for learning purposes.
+ * Keylogger driver
  *
  */
 
