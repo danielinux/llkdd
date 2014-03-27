@@ -105,7 +105,7 @@ static int __init kbdlogger_init(void)
 
 static void __exit kbdlogger_exit(void)
 {
-	input_register_handler(&kbdlogger_handler);
+	input_unregister_handler(&kbdlogger_handler);
 }
 
 module_init(kbdlogger_init);
