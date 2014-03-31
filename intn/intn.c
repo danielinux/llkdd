@@ -70,6 +70,7 @@ struct intn_dev {
 static struct file_operations intn_fops = {
 	.owner   = THIS_MODULE,
 	.read    = intn_read,
+	.write   = intn_write,
 	.open    = intn_open,
 	.release = intn_release,
 };
@@ -89,6 +90,15 @@ ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l)
 		return 1;
 }
 
+ssize_t intn_write(struct file *f, char __user *u, size_t size, loff_t *l)
+{
+	if (u == NULL)
+		return -1;
+
+	/* copy the buffer to user space */
+
+	return 0;
+}
 
 int intn_release(struct inode *inode, struct file *filp)
 {
