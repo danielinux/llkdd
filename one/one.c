@@ -47,9 +47,6 @@ MODULE_VERSION("0.1");
 static int one_major = 0;
 static int one_minor = 0;
 
-struct class *one_class = NULL;
-struct device *one_device = NULL;
-
 char c = 0;
 
 ssize_t one_read(struct file *f, char __user *u, size_t size, loff_t *l);
@@ -60,6 +57,8 @@ int one_release(struct inode *inode, struct file *filp);
 
 struct one_dev {
 	struct cdev one_cdev;
+	struct device *one_device;
+	struct class *one_class;
 };
 
 /* define the driver file operations. These are function pointers used by
@@ -105,15 +104,16 @@ static void __exit one_exit(void)
 	dev_t dev;
 	dev = MKDEV(one_major, one_minor);
 
-	if (one_device)
-		device_destroy(one_class, dev);
+	if (one->one_device)
+		device_destroy(one->one_class, dev);
 
-	if (one_class)
-		class_destroy(one_class);
+	if (one->one_class)
+		class_destroy(one->one_class);
 
 	cdev_del(&one->one_cdev);
 	kfree(one);
 	unregister_chrdev_region(dev, NR_DEVS);
+	printk(KERN_INFO "Removing %s driver", DEVNAME);
 }
 
 /*
@@ -152,22 +152,26 @@ static int __init one_init(void)
 	memset(one, 0, sizeof(struct one_dev));
 
 	/* creates the device class under /sys */
-	one_class = class_create(THIS_MODULE, CLASSNAME);
+	one->one_class = class_create(THIS_MODULE, CLASSNAME);
 
-	if (!one_class) {
+	if (!one->one_class) {
 		printk(KERN_ERR " Error creating device class %s", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
 
 	/* creates the device class under /dev */
-	one_device = device_create(one_class, NULL, dev, NULL, DEVNAME);
+	one->one_device = device_create(one->one_class, NULL, dev, NULL, DEVNAME);
 
-	if (!one_device) {
+	if (!one->one_device) {
 		printk(KERN_ERR " Error creating device %s", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
+
+	//one->one_device.attr = (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	//one->one_device->show = one->one_device->store = NULL;
+	//DEVICE_ATTR(one->one_device, (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH), NULL, NULL);
 
 	/* char device registration */
 	devno = MKDEV(one_major, one_minor);
