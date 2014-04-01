@@ -49,19 +49,22 @@ MODULE_VERSION("0.1");
 static int intn_major = 0;
 static int intn_minor = 0;
 
-struct class *intn_class = NULL;
-struct device *intn_device = NULL;
-
 char c = 0;
 
 ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l);
 
 int intn_open(struct inode *inode, struct file *filp);
 
+ssize_t intn_write(struct file *f, char __user *u, size_t size, loff_t *l);
+//int intn_write(struct inode *inode, struct file *filp);
+
 int intn_release(struct inode *inode, struct file *filp);
 
 struct intn_dev {
-	struct cdev intn_cdev;
+	struct cdev *intn_cdev;
+	struct class *intn_class;
+	struct device *intn_device;
+	struct mutex *lock;
 };
 
 /* define the driver file operations. These are function pointers used by
@@ -117,13 +120,13 @@ static void __exit intn_exit(void)
 	dev_t dev;
 	dev = MKDEV(intn_major, intn_minor);
 
-	if (intn_device)
-		device_destroy(intn_class, dev);
+	if (intn->intn_device)
+		device_destroy(intn->intn_class, dev);
 
-	if (intn_class)
-		class_destroy(intn_class);
+	if (intn->intn_class)
+		class_destroy(intn->intn_class);
 
-	cdev_del(&intn->intn_cdev);
+	cdev_del(intn->intn_cdev);
 	kfree(intn);
 	unregister_chrdev_region(dev, NR_DEVS);
 }
@@ -164,18 +167,18 @@ static int __init intn_init(void)
 	memset(intn, 0, sizeof(struct intn_dev));
 
 	/* creates the device class under /sys */
-	intn_class = class_create(THIS_MODULE, CLASSNAME);
+	intn->intn_class = class_create(THIS_MODULE, CLASSNAME);
 
-	if (!intn_class) {
+	if (!intn->intn_class) {
 		printk(KERN_ERR " Error creating device class %s", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
 
 	/* creates the device class under /dev */
-	intn_device = device_create(intn_class, NULL, dev, NULL, DEVNAME);
+	intn->intn_device = device_create(intn->intn_class, NULL, dev, NULL, DEVNAME);
 
-	if (!intn_device) {
+	if (!intn->intn_device) {
 		printk(KERN_ERR " Error creating device %s", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
@@ -183,10 +186,10 @@ static int __init intn_init(void)
 
 	/* char device registration */
 	devno = MKDEV(intn_major, intn_minor);
-	cdev_init(&intn->intn_cdev, &intn_fops);
-	intn->intn_cdev.owner = THIS_MODULE;
-	intn->intn_cdev.ops = &intn_fops;
-	err = cdev_add(&intn->intn_cdev, devno, NR_DEVS);
+	cdev_init(intn->intn_cdev, &intn_fops);
+	intn->intn_cdev->owner = THIS_MODULE;
+	intn->intn_cdev->ops = &intn_fops;
+	err = cdev_add(intn->intn_cdev, devno, NR_DEVS);
 
 	if (err) {
 		printk(KERN_NOTICE "Error %d adding /dev/intn", err);
