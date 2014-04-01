@@ -1,6 +1,13 @@
+## Learning Linux Kernel Device Drivers
 
-Last update: 2014.03.26 (Mi) 23:01:10 (UTC +0100 CET)
+Last update: 2014.04.01 (Di) 08:03:03 (UTC +0200 CEST)
 
+### Prer-requisites
+
+Before starting, it is import to have already experience with C programming.
+C is the Linux Kernel "Lingua Franca". Almost 97% the source code is written
+C and a very part in Assembly. A good knowledge about hardware standards and
+how it works is strongly recommended, specially for device drivers.
 
 ## Compile the code
 
@@ -13,4 +20,6 @@ cd hello
 make
 ```
 
-See more infos at the project [wiki page](https://github.com/rafaelnp/llkdd/wiki)
+and the corresponding device driver will be compiled.
+
+See more infos at the project [wiki page](https://github.com/rafaelnp/llkdd/wiki).
