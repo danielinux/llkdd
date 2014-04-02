@@ -55,7 +55,7 @@ ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l);
 
 int intn_open(struct inode *inode, struct file *filp);
 
-ssize_t intn_write(struct file *f, char __user *u, size_t size, loff_t *l);
+ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l);
 //int intn_write(struct inode *inode, struct file *filp);
 
 int intn_release(struct inode *inode, struct file *filp);
@@ -64,7 +64,7 @@ struct intn_dev {
 	struct cdev *intn_cdev;
 	struct class *intn_class;
 	struct device *intn_device;
-	struct mutex *lock;
+	struct mutex *intn_mutex;
 };
 
 /* define the driver file operations. These are function pointers used by
@@ -93,10 +93,10 @@ ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l)
 		return 1;
 }
 
-ssize_t intn_write(struct file *f, char __user *u, size_t size, loff_t *l)
+ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l)
 {
 	if (u == NULL)
-		return -1;
+		return -EFAULT;
 
 	/* copy the buffer to user space */
 
@@ -105,12 +105,15 @@ ssize_t intn_write(struct file *f, char __user *u, size_t size, loff_t *l)
 
 int intn_release(struct inode *inode, struct file *filp)
 {
+	mutex_unlock(intn->intn_mutex);
 	return 0;
 }
 
 
 int intn_open(struct inode *inode, struct file *filp)
 {
+	mutex_lock(intn->intn_mutex);
+
 	return 0;
 }
 
@@ -126,9 +129,12 @@ static void __exit intn_exit(void)
 	if (intn->intn_class)
 		class_destroy(intn->intn_class);
 
+	if (intn->intn_mutex)
+		kfree(intn->intn_mutex);
+
 	cdev_del(intn->intn_cdev);
-	kfree(intn);
 	unregister_chrdev_region(dev, NR_DEVS);
+	kfree(intn);
 }
 
 /*
@@ -144,19 +150,9 @@ static int __init intn_init(void)
 {
 	int ret = 0;
 	int err = 0;
-	int devno;
+	int devno = 0;
 	dev_t dev = 0;
 
-	/* allocates a major and minor dynamically */
-	ret = alloc_chrdev_region(&dev, intn_minor, NR_DEVS, DEVNAME);
-	intn_major = MAJOR(dev);
-
-	if (ret < 0) {
-		printk(KERN_WARNING "intn: can't get major %d\n", intn_major);
-		return ret;
-	}
-
-	printk(KERN_INFO "%s<Major, Minor>: <%d, %d>\n", DEVNAME, MAJOR(dev), MINOR(dev));
 	intn = kmalloc(sizeof(struct intn_dev), GFP_KERNEL);
 
 	if (!intn) {
@@ -165,6 +161,27 @@ static int __init intn_init(void)
 	}
 
 	memset(intn, 0, sizeof(struct intn_dev));
+
+	intn->intn_mutex = kmalloc(sizeof(struct mutex), GFP_KERNEL);
+
+	if (!intn) {
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	mutex_init(intn->intn_mutex);
+
+	/* allocates a major and minor dynamically */
+	ret = alloc_chrdev_region(&dev, intn_minor, NR_DEVS, DEVNAME);
+	intn_major = MAJOR(dev);
+
+	if (ret < 0) {
+		printk(KERN_WARNING "intn: can't get major %d\n", intn_major);
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	printk(KERN_INFO "%s<Major, Minor>: <%d, %d>\n", DEVNAME, MAJOR(dev), MINOR(dev));
 
 	/* creates the device class under /sys */
 	intn->intn_class = class_create(THIS_MODULE, CLASSNAME);
