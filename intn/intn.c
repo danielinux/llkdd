@@ -25,6 +25,7 @@
 #include <linux/errno.h>
 #include <linux/types.h>
 #include <linux/device.h>
+#include <linux/string.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
 #include <linux/proc_fs.h>
@@ -41,12 +42,15 @@ MODULE_VERSION("0.1");
 #define DEVNAME "intn"
 #define CLASSNAME "dummy"
 #define NR_DEVS 1
-
+#define INIT_VALUE 25
+#define INT_LEN  12
+#define BASE10  10
+#define DEFAULT_INT "25\0"
 
 static int intn_major = 0;
 static int intn_minor = 0;
-
-char c = 0;
+static int int_value = 0;
+static char cint[INT_LEN];
 
 ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l);
 
@@ -80,19 +84,39 @@ struct intn_dev *intn = NULL;
 /* The read() file opetation, it returns only a "1" character to user space */
 ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l)
 {
-	c = 1;
+	if (u == NULL)
+		return -EFAULT;
+
+	if (snprintf(cint, strlen(cint), "%d", int_value) < 0) {
+		printk(KERN_ERR "Conversion not possible, returning default value");
+		if (!strncpy(cint, DEFAULT_INT, 3))
+			return -EFAULT;
+	}
 
 	/* copy the buffer to user space */
-	if (copy_to_user(u, &c, 1) != 0)
+	if (copy_to_user(u, cint, strlen(cint)) != 0) {
+		printk(KERN_ERR "Error copying buffer to userspace");
 		return -EFAULT;
-	else
-		return 1;
+	} else {
+		/* we return the number of written bytes, always 4 */
+		printk(KERN_ERR "Return %lu bytes to userspace", strlen(cint));
+		return (strlen(cint));
+	}
 }
 
 ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l)
 {
+	long ltmp;
+	int ret;
+	int  tmp = int_value;
+
 	if (u == NULL)
 		return -EFAULT;
+
+	ret = kstrtol(u, BASE10, &ltmp);
+
+	//if (ret < 0 ) {
+	//	if (ret == -EV
 
 	/* copy the buffer to user space */
 
@@ -101,14 +125,14 @@ ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l)
 
 int intn_release(struct inode *inode, struct file *filp)
 {
-	mutex_unlock(&intn->intn_mutex);
+	//mutex_unlock(&intn->intn_mutex);
 	return 0;
 }
 
 
 int intn_open(struct inode *inode, struct file *filp)
 {
-	mutex_lock(&intn->intn_mutex);
+	//mutex_lock(&intn->intn_mutex);
 
 	return 0;
 }
@@ -128,6 +152,7 @@ static void __exit intn_exit(void)
 	cdev_del(&intn->intn_cdev);
 	unregister_chrdev_region(dev, NR_DEVS);
 	kfree(intn);
+	printk(KERN_ERR "%s exiting", DEVNAME);
 }
 
 /*
@@ -149,25 +174,24 @@ static int __init intn_init(void)
 	intn = kmalloc(sizeof(struct intn_dev), GFP_KERNEL);
 
 	if (!intn) {
+		printk(KERN_ERR " Error allocating memory");
 		ret = -ENOMEM;
 		goto fail;
 	}
 
 	memset(intn, 0, sizeof(struct intn_dev));
 
-	mutex_init(&intn->intn_mutex);
-
 	/* allocates a major and minor dynamically */
 	ret = alloc_chrdev_region(&dev, intn_minor, NR_DEVS, DEVNAME);
 	intn_major = MAJOR(dev);
 
 	if (ret < 0) {
-		printk(KERN_WARNING "intn: can't get major %d\n", intn_major);
+		printk(KERN_ERR "intn: can't get major %d\n", intn_major);
 		ret = -ENOMEM;
 		goto fail;
 	}
 
-	printk(KERN_INFO "%s<Major, Minor>: <%d, %d>\n", DEVNAME, MAJOR(dev), MINOR(dev));
+	printk(KERN_INFO "%s device: <Major, Minor>: <%d, %d>\n", DEVNAME, MAJOR(dev), MINOR(dev));
 
 	/* creates the device class under /sys */
 	intn->intn_class = class_create(THIS_MODULE, CLASSNAME);
@@ -195,10 +219,14 @@ static int __init intn_init(void)
 	err = cdev_add(&intn->intn_cdev, devno, NR_DEVS);
 
 	if (err) {
-		printk(KERN_NOTICE "Error %d adding /dev/intn", err);
+		printk(KERN_ERR "Error %d adding /dev/intn", err);
 		ret = err;
 		goto fail;
 	}
+
+	memset(cint, 0, INT_LEN);
+	int_value = INIT_VALUE;
+	//mutex_init(&intn->intn_mutex);
 
 	return 0;
 fail:
