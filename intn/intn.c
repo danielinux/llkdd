@@ -14,11 +14,8 @@
  * GNU General Public License for more details.
  *
  * Dummy character device driver an extended version of /dev/one. It
- * implements concurrency management. Every time a process reads from is, the
- * value return is decremented (til it reaches INT_MIN). The same way it is
- * incremented every time a process writes to it (til it reachs INT_MAX)
- * found on /dev/zero, except the read output is ones. At every operation the
- * current value at /dev/intn is returned.
+ * implements concurrency management. Every time a process reads/writes from/to
+ * it, a mutex is set, so a value can be read/written. 
  */
 
 #include <linux/init.h>
@@ -56,15 +53,14 @@ ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l);
 int intn_open(struct inode *inode, struct file *filp);
 
 ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l);
-//int intn_write(struct inode *inode, struct file *filp);
 
 int intn_release(struct inode *inode, struct file *filp);
 
 struct intn_dev {
-	struct cdev *intn_cdev;
+	struct cdev intn_cdev;
 	struct class *intn_class;
 	struct device *intn_device;
-	struct mutex *intn_mutex;
+	struct mutex intn_mutex;
 };
 
 /* define the driver file operations. These are function pointers used by
@@ -105,14 +101,14 @@ ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l)
 
 int intn_release(struct inode *inode, struct file *filp)
 {
-	mutex_unlock(intn->intn_mutex);
+	mutex_unlock(&intn->intn_mutex);
 	return 0;
 }
 
 
 int intn_open(struct inode *inode, struct file *filp)
 {
-	mutex_lock(intn->intn_mutex);
+	mutex_lock(&intn->intn_mutex);
 
 	return 0;
 }
@@ -129,10 +125,7 @@ static void __exit intn_exit(void)
 	if (intn->intn_class)
 		class_destroy(intn->intn_class);
 
-	if (intn->intn_mutex)
-		kfree(intn->intn_mutex);
-
-	cdev_del(intn->intn_cdev);
+	cdev_del(&intn->intn_cdev);
 	unregister_chrdev_region(dev, NR_DEVS);
 	kfree(intn);
 }
@@ -162,14 +155,7 @@ static int __init intn_init(void)
 
 	memset(intn, 0, sizeof(struct intn_dev));
 
-	intn->intn_mutex = kmalloc(sizeof(struct mutex), GFP_KERNEL);
-
-	if (!intn) {
-		ret = -ENOMEM;
-		goto fail;
-	}
-
-	mutex_init(intn->intn_mutex);
+	mutex_init(&intn->intn_mutex);
 
 	/* allocates a major and minor dynamically */
 	ret = alloc_chrdev_region(&dev, intn_minor, NR_DEVS, DEVNAME);
@@ -203,10 +189,10 @@ static int __init intn_init(void)
 
 	/* char device registration */
 	devno = MKDEV(intn_major, intn_minor);
-	cdev_init(intn->intn_cdev, &intn_fops);
-	intn->intn_cdev->owner = THIS_MODULE;
-	intn->intn_cdev->ops = &intn_fops;
-	err = cdev_add(intn->intn_cdev, devno, NR_DEVS);
+	cdev_init(&intn->intn_cdev, &intn_fops);
+	intn->intn_cdev.owner = THIS_MODULE;
+	intn->intn_cdev.ops = &intn_fops;
+	err = cdev_add(&intn->intn_cdev, devno, NR_DEVS);
 
 	if (err) {
 		printk(KERN_NOTICE "Error %d adding /dev/intn", err);
