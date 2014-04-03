@@ -60,6 +60,10 @@ ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l)
 
 int intn_release(struct inode *inode, struct file *filp);
 
+static int __init intn_init(void);
+
+static void __exit intn_exit(void);
+
 struct intn_dev {
 	struct cdev intn_cdev;
 	struct class *intn_class;
@@ -86,6 +90,8 @@ ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l)
 {
 	if (u == NULL)
 		return -EFAULT;
+
+	printk(KERN_ERR "Requested read size: %lu", size);
 
 	if (snprintf(cint, strlen(cint), "%d", int_value) < 0) {
 		printk(KERN_ERR "Conversion not possible, returning default value");
@@ -135,24 +141,6 @@ int intn_open(struct inode *inode, struct file *filp)
 	//mutex_lock(&intn->intn_mutex);
 
 	return 0;
-}
-
-/* dealocate the drivers data and unload it from kernel space memory */
-static void __exit intn_exit(void)
-{
-	dev_t dev;
-	dev = MKDEV(intn_major, intn_minor);
-
-	if (intn->intn_device)
-		device_destroy(intn->intn_class, dev);
-
-	if (intn->intn_class)
-		class_destroy(intn->intn_class);
-
-	cdev_del(&intn->intn_cdev);
-	unregister_chrdev_region(dev, NR_DEVS);
-	kfree(intn);
-	printk(KERN_ERR "%s exiting", DEVNAME);
 }
 
 /*
@@ -232,6 +220,25 @@ static int __init intn_init(void)
 fail:
 	intn_exit();
 	return ret;
+}
+
+
+/* dealocate the drivers data and unload it from kernel space memory */
+static void __exit intn_exit(void)
+{
+	dev_t dev;
+	dev = MKDEV(intn_major, intn_minor);
+
+	if (intn->intn_device)
+		device_destroy(intn->intn_class, dev);
+
+	if (intn->intn_class)
+		class_destroy(intn->intn_class);
+
+	cdev_del(&intn->intn_cdev);
+	unregister_chrdev_region(dev, NR_DEVS);
+	kfree(intn);
+	printk(KERN_ERR "%s exiting", DEVNAME);
 }
 
 /* Declare the driver constructor/destructor */
