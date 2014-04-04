@@ -91,21 +91,19 @@ ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l)
 	if (u == NULL)
 		return -EFAULT;
 
-	printk(KERN_ERR "Requested read size: %lu", size);
-
-	if (snprintf(cint, strlen(cint), "%d", int_value) < 0) {
-		printk(KERN_ERR "Conversion not possible, returning default value");
+	if (snprintf(cint, INT_LEN, "%d", int_value) < 0) {
+		printk(KERN_ERR "[intn] Conversion not possible, returning default value");
 		if (!strncpy(cint, DEFAULT_INT, 3))
 			return -EFAULT;
 	}
 
 	/* copy the buffer to user space */
-	if (copy_to_user(u, cint, strlen(cint)) != 0) {
-		printk(KERN_ERR "Error copying buffer to userspace");
+	if (copy_to_user(u, cint, strlen(cint)) < 0) {
+		printk(KERN_ERR "[intn] Error copying buffer to userspace");
 		return -EFAULT;
 	} else {
 		/* we return the number of written bytes, always 4 */
-		printk(KERN_ERR "Return %lu bytes to userspace", strlen(cint));
+		printk(KERN_ERR "[intn] Return %lu bytes to userspace", strlen(cint));
 		return (strlen(cint));
 	}
 }
@@ -162,7 +160,7 @@ static int __init intn_init(void)
 	intn = kmalloc(sizeof(struct intn_dev), GFP_KERNEL);
 
 	if (!intn) {
-		printk(KERN_ERR " Error allocating memory");
+		printk(KERN_ERR "[intn] Error allocating memory");
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -174,18 +172,18 @@ static int __init intn_init(void)
 	intn_major = MAJOR(dev);
 
 	if (ret < 0) {
-		printk(KERN_ERR "intn: can't get major %d\n", intn_major);
+		printk(KERN_ERR "[intn] can't get major %d\n", intn_major);
 		ret = -ENOMEM;
 		goto fail;
 	}
 
-	printk(KERN_INFO "%s device: <Major, Minor>: <%d, %d>\n", DEVNAME, MAJOR(dev), MINOR(dev));
+	printk(KERN_INFO "[intn] %s device: <Major, Minor>: <%d, %d>\n", DEVNAME, MAJOR(dev), MINOR(dev));
 
 	/* creates the device class under /sys */
 	intn->intn_class = class_create(THIS_MODULE, CLASSNAME);
 
 	if (!intn->intn_class) {
-		printk(KERN_ERR " Error creating device class %s", DEVNAME);
+		printk(KERN_ERR "[intn] Error creating device class %s", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -194,7 +192,7 @@ static int __init intn_init(void)
 	intn->intn_device = device_create(intn->intn_class, NULL, dev, NULL, DEVNAME);
 
 	if (!intn->intn_device) {
-		printk(KERN_ERR " Error creating device %s", DEVNAME);
+		printk(KERN_ERR "[intn] Error creating device %s", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -207,7 +205,7 @@ static int __init intn_init(void)
 	err = cdev_add(&intn->intn_cdev, devno, NR_DEVS);
 
 	if (err) {
-		printk(KERN_ERR "Error %d adding /dev/intn", err);
+		printk(KERN_ERR "[intn] Error %d adding /dev/intn", err);
 		ret = err;
 		goto fail;
 	}
@@ -238,7 +236,7 @@ static void __exit intn_exit(void)
 	cdev_del(&intn->intn_cdev);
 	unregister_chrdev_region(dev, NR_DEVS);
 	kfree(intn);
-	printk(KERN_ERR "%s exiting", DEVNAME);
+	printk(KERN_ERR "[%s] exiting", DEVNAME);
 }
 
 /* Declare the driver constructor/destructor */
