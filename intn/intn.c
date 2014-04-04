@@ -45,7 +45,7 @@ MODULE_VERSION("0.1");
 #define INIT_VALUE 25
 #define INT_LEN  12
 #define BASE10  10
-#define DEFAULT_INT "25\0"
+#define DEFAULT_INT "25"
 
 static int intn_major = 0;
 static int intn_minor = 0;
@@ -92,18 +92,18 @@ ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l)
 		return -EFAULT;
 
 	if (snprintf(cint, INT_LEN, "%d", int_value) < 0) {
-		printk(KERN_ERR "[intn] Conversion not possible, returning default value");
+		printk(KERN_ERR "[intn] Conversion not possible, returning default value\n");
 		if (!strncpy(cint, DEFAULT_INT, 3))
 			return -EFAULT;
 	}
 
 	/* copy the buffer to user space */
 	if (copy_to_user(u, cint, strlen(cint)) < 0) {
-		printk(KERN_ERR "[intn] Error copying buffer to userspace");
+		printk(KERN_ERR "[intn] Error copying buffer to userspace\n");
 		return -EFAULT;
 	} else {
 		/* we return the number of written bytes, always 4 */
-		printk(KERN_ERR "[intn] Return %lu bytes to userspace", strlen(cint));
+		printk(KERN_ERR "[intn] Return %lu bytes to userspace\n", strlen(cint));
 		return (strlen(cint));
 	}
 }
@@ -160,7 +160,7 @@ static int __init intn_init(void)
 	intn = kmalloc(sizeof(struct intn_dev), GFP_KERNEL);
 
 	if (!intn) {
-		printk(KERN_ERR "[intn] Error allocating memory");
+		printk(KERN_ERR "[intn] Error allocating memory\n");
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -183,7 +183,7 @@ static int __init intn_init(void)
 	intn->intn_class = class_create(THIS_MODULE, CLASSNAME);
 
 	if (!intn->intn_class) {
-		printk(KERN_ERR "[intn] Error creating device class %s", DEVNAME);
+		printk(KERN_ERR "[intn] Error creating device class %s\n", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -192,7 +192,7 @@ static int __init intn_init(void)
 	intn->intn_device = device_create(intn->intn_class, NULL, dev, NULL, DEVNAME);
 
 	if (!intn->intn_device) {
-		printk(KERN_ERR "[intn] Error creating device %s", DEVNAME);
+		printk(KERN_ERR "[intn] Error creating device %s\n", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -205,7 +205,7 @@ static int __init intn_init(void)
 	err = cdev_add(&intn->intn_cdev, devno, NR_DEVS);
 
 	if (err) {
-		printk(KERN_ERR "[intn] Error %d adding /dev/intn", err);
+		printk(KERN_ERR "[intn] Error %d adding /dev/intn\n", err);
 		ret = err;
 		goto fail;
 	}
@@ -236,7 +236,7 @@ static void __exit intn_exit(void)
 	cdev_del(&intn->intn_cdev);
 	unregister_chrdev_region(dev, NR_DEVS);
 	kfree(intn);
-	printk(KERN_ERR "[%s] exiting", DEVNAME);
+	printk(KERN_ERR "[%s] exiting\n", DEVNAME);
 }
 
 /* Declare the driver constructor/destructor */
