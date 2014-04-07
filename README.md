@@ -1,6 +1,16 @@
 ## Learning Linux Kernel Device Drivers
 
-Last update: 2014.04.02 (Mi) 16:17:55 (UTC +0200 CEST)
+Last update: 2014.04.07 (Mo) 17:27:23 (UTC +0200 CEST)
+
+### What is this about ?
+
+This is a way to learn how to write/programm device drivers for the Linux Kernel.
+The primary goal is to learn to use the available API (3.x) and the pertinent
+concepts and write correct code and document it, in order to reduce the learning
+curve. Optimizations may be included/use if appropriate. Correctness comes first.
+
+This is a working in progress, and therefore bugs/errors may be found. Suggestions,
+critiques, contributions are welcome. :)
 
 ### Pre-requisites
 
@@ -9,7 +19,7 @@ C is the Linux Kernel "Lingua Franca". Almost 97% the source code is written
 C and a very part in Assembly. A good knowledge about hardware standards and
 how it works is strongly recommended, specially for device drivers.
 
-## Compile the code
+### Compile the code
 
 The default path for the current Kernel source code points to `$HOME/src/linux`.
 Put the kernel source code in this direcory or create a symlink to it. The next
