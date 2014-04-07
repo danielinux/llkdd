@@ -92,52 +92,73 @@ ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l)
 		return -EFAULT;
 
 	if (snprintf(cint, INT_LEN, "%d", int_value) < 0) {
-		printk(KERN_ERR "[intn] Conversion not possible, returning default value\n");
+		printk(KERN_ERR "[%s] Conversion not possible, returning default value\n",
+				DEVNAME);
 		if (!strncpy(cint, DEFAULT_INT, 3))
 			return -EFAULT;
 	}
 
 	/* copy the buffer to user space */
 	if (copy_to_user(u, cint, strlen(cint)) < 0) {
-		printk(KERN_ERR "[intn] Error copying buffer to userspace\n");
+		printk(KERN_ERR "[%s] Error copying buffer to userspace\n", DEVNAME);
 		return -EFAULT;
 	} else {
 		/* we return the number of written bytes, always 4 */
-		printk(KERN_ERR "[intn] Return %lu bytes to userspace\n", strlen(cint));
+		printk(KERN_ERR "[%s] Return %lu bytes to userspace\n", DEVNAME, strlen(cint));
 		return (strlen(cint));
 	}
 }
 
 ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l)
 {
-	long ltmp;
 	int ret;
-	int  tmp = int_value;
+	long long_tmp;
+	char ctmp[INT_LEN];
 
 	if (u == NULL)
 		return -EFAULT;
 
-	ret = kstrtol(u, BASE10, &ltmp);
+	memset(ctmp, 0, INT_LEN);
 
-	//if (ret < 0 ) {
-	//	if (ret == -EV
+	/* copy the buffer from user space */
+	if (copy_from_user(&ctmp, u, INT_LEN) < 0) { 
+		printk(KERN_ERR "[%s] Error copying buffer to userspace\n", DEVNAME);
+		return -EFAULT;
+	} else {
+		/* we return the number of written bytes, always 4 */
+		printk(KERN_ERR "[%s] Return %lu bytes from userspace\n",
+				DEVNAME, strlen(ctmp));
+	}
 
-	/* copy the buffer to user space */
+	ret = kstrtol((const char *)&ctmp, BASE10, &long_tmp);
+
+	if (ret < 0 ) {
+		if (ret == LONG_MAX) {
+			printk(KERN_ERR "[%s] Overflow !\n", DEVNAME);
+			return -ERANGE;
+		} else if (ret == LONG_MIN) {
+			printk(KERN_ERR "[%s] Underflow !\n", DEVNAME);
+			return -ERANGE;
+		} else {
+			printk(KERN_ERR "[%s] Parsing error (invalid input)\n", DEVNAME);
+			return -EINVAL;
+		}
+	}
+
+	int_value = (int)long_tmp;
+	printk(KERN_ERR "[%s] Value stored: %d\n", DEVNAME, int_value);
 
 	return 0;
 }
 
 int intn_release(struct inode *inode, struct file *filp)
 {
-	//mutex_unlock(&intn->intn_mutex);
 	return 0;
 }
 
 
 int intn_open(struct inode *inode, struct file *filp)
 {
-	//mutex_lock(&intn->intn_mutex);
-
 	return 0;
 }
 
@@ -160,7 +181,7 @@ static int __init intn_init(void)
 	intn = kmalloc(sizeof(struct intn_dev), GFP_KERNEL);
 
 	if (!intn) {
-		printk(KERN_ERR "[intn] Error allocating memory\n");
+		printk(KERN_ERR "[%s] Error allocating memory\n", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -183,7 +204,7 @@ static int __init intn_init(void)
 	intn->intn_class = class_create(THIS_MODULE, CLASSNAME);
 
 	if (!intn->intn_class) {
-		printk(KERN_ERR "[intn] Error creating device class %s\n", DEVNAME);
+		printk(KERN_ERR "[%s] Error creating device class %s\n", DEVNAME, DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -192,10 +213,13 @@ static int __init intn_init(void)
 	intn->intn_device = device_create(intn->intn_class, NULL, dev, NULL, DEVNAME);
 
 	if (!intn->intn_device) {
-		printk(KERN_ERR "[intn] Error creating device %s\n", DEVNAME);
+		printk(KERN_ERR "[%s] Error creating device %s\n", DEVNAME, DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
+
+	/* Mutex must be initialized  before the device is allocated */
+	mutex_init(&intn->intn_mutex); 
 
 	/* char device registration */
 	devno = MKDEV(intn_major, intn_minor);
@@ -205,14 +229,13 @@ static int __init intn_init(void)
 	err = cdev_add(&intn->intn_cdev, devno, NR_DEVS);
 
 	if (err) {
-		printk(KERN_ERR "[intn] Error %d adding /dev/intn\n", err);
+		printk(KERN_ERR "[%s] Error %d adding /dev/intn\n", DEVNAME, err);
 		ret = err;
 		goto fail;
 	}
 
 	memset(cint, 0, INT_LEN);
 	int_value = INIT_VALUE;
-	//mutex_init(&intn->intn_mutex);
 
 	return 0;
 fail:
