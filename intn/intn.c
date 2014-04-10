@@ -105,6 +105,7 @@ ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l)
 	} else {
 		/* we return the number of written bytes, always 4 */
 		printk(KERN_ERR "[%s] Return %lu bytes to userspace\n", DEVNAME, strlen(cint));
+		printk(KERN_ERR "[%s] Value read: %d\n", DEVNAME, int_value);
 		return (strlen(cint));
 	}
 }
