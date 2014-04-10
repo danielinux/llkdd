@@ -13,11 +13,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * This programs tests the intn (/dev/intn) driver. It starts 2*N threads,
- * where every 2*i-th thread reads, and the (2*i) + 1-th thread writes
- * (increments intn by one). It is expected in the end, if mutual exclusion
- * is active, to have as a final result in intn the initial value (25) + N.
- * Otherwise is not possible foresee the final result in intn.
+ * This programs tests the intn (/dev/intn) driver. It starts N (N = 4 if the
+ * user does not provide a value on the command line) threads, where each one
+ * of them increments intn value by one concurrently. At the end the it is
+ * expected to have a final value of X (initial) + N.
  */
 
 #include <stdio.h>
@@ -38,35 +37,35 @@ struct tdata {
 	char  intn[INT_LEN];
 };
 
-void *read_devintn(void *data)
-{
-	struct tdata *t;
-	int fd;
-	char myint[INT_LEN];
+// void *read_devintn(void *data)
+// {
+// 	struct tdata *t;
+// 	int fd;
+// 	char myint[INT_LEN];
+// 
+// 	if (data == NULL)
+// 		return NULL;
+// 
+// 	t = data;
+// 	fd = open(DEVFILE, O_RDONLY);
+// 
+// 	if (fd == -1)
+// 		return NULL;
+// 
+// 	memset(myint, 0, INT_LEN);
+// 
+// 	if (read(fd, myint, INT_LEN) < 0) {
+// 		printf("thread[%d]: error reading from %s\n", t->tnum, DEVFILE);
+// 	} else {
+// 		strncpy(t->intn, myint, INT_LEN);
+// 		printf("thread[%d]: value read from %s: %s\n", t->tnum, DEVFILE, t->intn);
+// 	}
+// 
+// 	close(fd);
+// 	pthread_exit(NULL);
+// }
 
-	if (data == NULL)
-		return NULL;
-
-	t = data;
-	fd = open(DEVFILE, O_RDONLY);
-
-	if (fd == -1)
-		return NULL;
-
-	memset(myint, 0, INT_LEN);
-
-	if (read(fd, myint, INT_LEN) < 0) {
-		printf("thread[%d]: error reading from %s\n", t->tnum, DEVFILE);
-	} else {
-		strncpy(t->intn, myint, INT_LEN);
-		printf("thread[%d]: value read from %s: %s\n", t->tnum, DEVFILE, t->intn);
-	}
-
-	close(fd);
-	pthread_exit(NULL);
-}
-
-void *write_devintn(void *data)
+void *inc_devintn(void *data)
 {
 	struct tdata *t;
 	int fd, ret;
@@ -87,7 +86,7 @@ void *write_devintn(void *data)
 		printf("thread[%d]: error reading from %s\n", t->tnum, DEVFILE);
 	} else {
 		strncpy(t->intn, myint, INT_LEN);
-		//printf("thread[%d]: value read from %s: %s\n", t->tnum, DEVFILE, t->intn);
+		printf("thread[%d]: value read from %s: %s\n", t->tnum, DEVFILE, t->intn);
 	}
 
 	int tmp = (int)strtol(myint, NULL, 10);
@@ -126,16 +125,12 @@ int main(int argc, const char *argv[])
 		mydata[i].tnum = i,
 		memset(mydata[i].intn, 0, INT_LEN);
 		printf("In main: creating thread %u\n", i);
-
-		if (i%2 != 0)
-			ret[i] = pthread_create(&threads[i], NULL, write_devintn, &mydata[i]);
-		else
-			ret[i] = pthread_create(&threads[i], NULL, read_devintn, &mydata[i]);
+		ret[i] = pthread_create(&threads[i], NULL, inc_devintn, &mydata[i]);
 
 		if (ret[i]){
 			printf("ERROR: thread[%u] return code from pthread_create() is %u\n",
 					i, ret[i]);
-			exit(-1);
+			//exit(-1);
 		}
 	}
 
