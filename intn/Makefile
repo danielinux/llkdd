@@ -18,7 +18,7 @@ default:
 endif
 
 test:
-	gcc -pthread -o test_intn test_intn.c
+	gcc -g -Wall -pthread -o test_intn test_intn.c
 
 clean:
 	rm -rf *.o *.ko *~ core .depend *.mod.c .*.cmd .tmp_versions .*.o.d \
