@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include <unistd.h>
 
 #define NUM_THREADS 4
 #define INT_LEN    13
@@ -86,7 +87,7 @@ void *write_devintn(void *data)
 		printf("thread[%d]: error reading from %s\n", t->tnum, DEVFILE);
 	} else {
 		strncpy(t->intn, myint, INT_LEN);
-		printf("thread[%d]: value read from %s: %s\n", t->tnum, DEVFILE, t->intn);
+		//printf("thread[%d]: value read from %s: %s\n", t->tnum, DEVFILE, t->intn);
 	}
 
 	int tmp = (int)strtol(myint, NULL, 10);
@@ -98,43 +99,46 @@ void *write_devintn(void *data)
 	} else {
 		if ((ret = write(fd, myint, INT_LEN)) < 0) {
 			printf("thread[%d]: error writing (%d)\n", t->tnum, ret);
-		}
+		} else
+			strncpy(t->intn, myint, INT_LEN);
+			printf("thread[%d]: value writen to %s: %s\n", t->tnum, DEVFILE, t->intn);
 	}
 
 	close(fd);
 	pthread_exit(NULL);
 }
 
-int main(void)
+int main(int argc, const char *argv[])
 {
-	int32_t ret[NUM_THREADS];
-	pthread_t threads[NUM_THREADS];
-	int rc;
-	long i;
-	struct tdata mydata[NUM_THREADS];
+	uint32_t nthreads = NUM_THREADS;
+	uint32_t i;
 
-	for(i = 0; i < NUM_THREADS; i++){
+	if (argc > 1 && argv[1] != NULL) {
+		nthreads = (uint32_t)atoi(argv[1]);
+	}
+
+	uint32_t ret[nthreads];
+	pthread_t threads[nthreads];
+	struct tdata mydata[nthreads];
+	printf("creating %u threads\n", nthreads);
+
+	for(i = 0; i < nthreads; i++){
 		mydata[i].tnum = i,
 		memset(mydata[i].intn, 0, INT_LEN);
-		printf("In main: creating thread %ld\n", i);
+		printf("In main: creating thread %u\n", i);
 
 		if (i%2 != 0)
-			rc = pthread_create(&threads[i], NULL, write_devintn, &mydata[i]);
+			ret[i] = pthread_create(&threads[i], NULL, write_devintn, &mydata[i]);
 		else
-			rc = pthread_create(&threads[i], NULL, read_devintn, &mydata[i]);
+			ret[i] = pthread_create(&threads[i], NULL, read_devintn, &mydata[i]);
 
-		if (rc){
-			printf("ERROR: thread[%ld] return code from pthread_create() is %d\n",
-					i, rc);
+		if (ret[i]){
+			printf("ERROR: thread[%u] return code from pthread_create() is %u\n",
+					i, ret[i]);
 			exit(-1);
 		}
 	}
 
 	pthread_exit(NULL);
-
-	for(i = 0; i < NUM_THREADS; i++){
-		printf("(Main Thread)thread[%d]: value read from %s: %s\n", mydata[i].tnum,
-				DEVFILE, mydata[i].intn);
-	}
 	return 0;
 }
