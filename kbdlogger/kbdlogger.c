@@ -52,15 +52,15 @@ static int kbdlogger_connect(struct input_handler *handler, struct input_dev *de
 		goto err_unregister_handle;
 
 	printk(KERN_DEBUG pr_fmt("Connected device: %s (%s at %s)\n"),
-	       dev_name(&dev->dev),
-	       dev->name ?: "unknown",
-	       dev->phys ?: "unknown");
+		dev_name(&dev->dev),
+		dev->name ?: "unknown",
+		dev->phys ?: "unknown");
 
 	return 0;
 
- err_unregister_handle:
+err_unregister_handle:
 	input_unregister_handle(handle);
- err_free_handle:
+err_free_handle:
 	kfree(handle);
 	return error;
 }
@@ -70,7 +70,7 @@ static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 {
 	if (type == EV_KEY) {
 		printk(KERN_DEBUG pr_fmt("Key event. Dev: %s, Type: %d, Code: %d, Value: %d\n"),
-	       dev_name(&handle->dev->dev), type, code, value);
+		dev_name(&handle->dev->dev), type, code, value);
 	}
 }
 
@@ -78,7 +78,7 @@ static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 static void kbdlogger_disconnect(struct input_handle *handle)
 {
 	printk(KERN_DEBUG pr_fmt("Disconnected device: %s\n"),
-	       dev_name(&handle->dev->dev));
+		ev_name(&handle->dev->dev));
 
 	input_close_device(handle);
 	input_unregister_handle(handle);
