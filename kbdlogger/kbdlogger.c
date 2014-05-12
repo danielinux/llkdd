@@ -39,6 +39,13 @@ static int kbdlogger_connect(struct input_handler *handler, struct input_dev *de
 	if (!handle)
 		return -ENOMEM;
 
+	/*
+	 * TODO: Write here a if to filter out input devices that are not
+	 * keyboards.
+	 *
+	 * SEE: include/linux/device.h (struct device)
+	 *      include/linux/input.h  (struct input_dev)
+	 */
 	handle->dev = dev;
 	handle->handler = handler;
 	handle->name = "evbug";
@@ -78,7 +85,7 @@ static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 static void kbdlogger_disconnect(struct input_handle *handle)
 {
 	printk(KERN_DEBUG pr_fmt("Disconnected device: %s\n"),
-		ev_name(&handle->dev->dev));
+		dev_name(&handle->dev->dev));
 
 	input_close_device(handle);
 	input_unregister_handle(handle);
