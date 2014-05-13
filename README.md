@@ -1,6 +1,6 @@
 ## Learning Linux Kernel Device Drivers
 
-Last update: 2014.04.07 (Mo) 17:27:23 (UTC +0200 CEST)
+Last update: 2014.05.13 (Di) 14:27:32 (UTC +0200 CEST)
 
 ### What is this about ?
 
@@ -31,5 +31,29 @@ make
 ```
 
 and the corresponding device driver will be compiled.
+
+To use the compiled driver:
+
+```sh
+sudo insmod drivername.ko
+```
+And it is loaded in memory. To remove it just type:
+
+```sh
+sudo  rmmod drivername.ko
+```
+
+In order to see the driver's messages in the kernel execute in a terminal:
+
+```sh
+journalctl -f _TRANSPORT=kernel
+```
+if you use systemd or:
+
+```sh
+tail -f /var/log/kern.log
+```
+
+if you use syslog-ng.
 
 See more infos at the project [wiki page](https://github.com/rafaelnp/llkdd/wiki).
