@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 
 #define NUM_THREADS 4
 #define INT_LEN    13
@@ -50,13 +51,18 @@ void *inc_devintn(void *data)
 	t = data;
 	fd = open(DEVFILE, O_RDWR);
 
-	if (fd == -1)
+	if (fd == -1) {
+		printf("thread[%d]: error opening from %s (%s)\n",
+				t->tnum, DEVFILE, strerror(errno));
 		return NULL;
+	}
 
 	memset(myint, 0, INT_LEN);
 
 	if (read(fd, myint, INT_LEN) < 0) {
-		printf("thread[%d]: error reading from %s\n", t->tnum, DEVFILE);
+		printf("thread[%d]: error reading from %s (%s)\n",
+				t->tnum, DEVFILE, strerror(errno));
+		return NULL;
 	} else {
 		strncpy(t->intn, myint, INT_LEN);
 		printf("thread[%d]: value read from %s: %s\n", t->tnum, DEVFILE, t->intn);
@@ -71,9 +77,10 @@ void *inc_devintn(void *data)
 	} else {
 		if ((ret = write(fd, myint, INT_LEN)) < 0) {
 			printf("thread[%d]: error writing (%d)\n", t->tnum, ret);
-		} else
+		} else {
 			strncpy(t->intn, myint, INT_LEN);
 			printf("thread[%d]: value writen to %s: %s\n", t->tnum, DEVFILE, t->intn);
+		}
 	}
 
 	close(fd);
