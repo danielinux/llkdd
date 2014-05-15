@@ -154,12 +154,14 @@ ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l)
 
 int intn_release(struct inode *inode, struct file *filp)
 {
+	mutex_unlock(&intn->intn_mutex);
 	return 0;
 }
 
 
 int intn_open(struct inode *inode, struct file *filp)
 {
+	mutex_lock(&intn->intn_mutex);
 	return 0;
 }
 
@@ -220,7 +222,7 @@ static int __init intn_init(void)
 	}
 
 	/* Mutex must be initialized  before the device is allocated */
-	mutex_init(&intn->intn_mutex); 
+	mutex_init(&intn->intn_mutex);
 
 	/* char device registration */
 	devno = MKDEV(intn_major, intn_minor);
