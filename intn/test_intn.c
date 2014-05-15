@@ -37,33 +37,6 @@ struct tdata {
 	char  intn[INT_LEN];
 };
 
-// void *read_devintn(void *data)
-// {
-// 	struct tdata *t;
-// 	int fd;
-// 	char myint[INT_LEN];
-// 
-// 	if (data == NULL)
-// 		return NULL;
-// 
-// 	t = data;
-// 	fd = open(DEVFILE, O_RDONLY);
-// 
-// 	if (fd == -1)
-// 		return NULL;
-// 
-// 	memset(myint, 0, INT_LEN);
-// 
-// 	if (read(fd, myint, INT_LEN) < 0) {
-// 		printf("thread[%d]: error reading from %s\n", t->tnum, DEVFILE);
-// 	} else {
-// 		strncpy(t->intn, myint, INT_LEN);
-// 		printf("thread[%d]: value read from %s: %s\n", t->tnum, DEVFILE, t->intn);
-// 	}
-// 
-// 	close(fd);
-// 	pthread_exit(NULL);
-// }
 
 void *inc_devintn(void *data)
 {
