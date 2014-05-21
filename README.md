@@ -23,7 +23,7 @@ how it works is strongly recommended, specially for device drivers.
 
 The  Linux Kernel coding style is followed. You can find it here:
 
-(Linux Kernel Coding Style)[https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/Documentation/CodingStyle]
+[Linux Kernel Coding Style](https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/Documentation/CodingStyle)
 
 
 ### Getting the Linux Kernel Code
