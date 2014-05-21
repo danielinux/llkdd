@@ -1,6 +1,6 @@
 ## Learning Linux Kernel Device Drivers
 
-Last update: 2014.05.13 (Di) 14:27:32 (UTC +0200 CEST)
+Last update: 2014.05.21 (Mi) 06:59:48 (UTC +0200 CEST)
 
 ### What is this about ?
 
@@ -18,6 +18,46 @@ Before starting, it is import to have already experience with C programming.
 C is the Linux Kernel "Lingua Franca". Almost 97% the source code is written
 C and a very part in Assembly. A good knowledge about hardware standards and
 how it works is strongly recommended, specially for device drivers.
+
+### Coding Style
+
+The  Linux Kernel coding style is followed. You can find it here:
+
+(Linux Kernel Coding Style)[https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/tree/Documentation/CodingStyle]
+
+
+### Getting the Linux Kernel Code
+
+The Linux Stable tree is used in this project. Here is how to get the code:
+
+```sh
+mkdir ~/src
+cd ~/src
+git clone git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
+```
+
+I suggest to use a tagged version instead of the master tree, because you know
+where you are working on.
+
+```
+cd linux-stable
+git co v3.14
+```
+
+One can replace the tag (in this case v3.14) by  any other one.
+Then I suggest to make a symbolic link to your git tree. It makes your life easier
+if you need to change to other trees and one keeps a conssitent name:
+
+```
+cd ~/src
+ln -s linux-stable linux
+```
+
+### Compiling the kernel
+
+This part is partially dependent from the Linus distro one uses. It is recommended
+to take a look at one's distro documentation for more details.
+
 
 ### Compile the code
 
