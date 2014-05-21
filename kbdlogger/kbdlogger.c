@@ -26,6 +26,10 @@
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/types.h>
+#include <linux/fs.h>
+#include <linux/cdev.h>
+#include <linux/kobject.h>
+#include <asm/uaccess.h>
 
 MODULE_AUTHOR("Rafael do Nascimento Pereira <rnp@25ghz.net>");
 MODULE_LICENSE("GPL");
@@ -36,18 +40,14 @@ MODULE_DESCRIPTION("Input driver keyboard logger");
 
 const char *kbdstr = "keyboard";
 
-struct kbdlogger_driver {
-	struct kobject kobj;
-	uint64_t pressev;
-	uint64_t relev;
-	uint64_t autorepev;
-	char    *starttime;
-	struct class *kbdclass;
-	struct device *kbddev;
-	dev_t devnum;
-};
-
-static struct kbdlogger_driver kbdlogger;
+struct kobject kobj;
+struct class   *kbdclass;
+struct device  *kbddev;
+dev_t    devnum;
+uint64_t pressev;
+uint64_t relev;
+uint64_t autorepev;
+char     *starttime;
 
 static int __init kbdlogger_init(void);
 
@@ -59,14 +59,6 @@ static int kbdlogger_connect(struct input_handler *handler, struct input_dev *de
 	struct input_handle *handle;
 	int error;
 	struct device *device;
-
-	/*
-	 * TODO: Write here a if to filter out input devices that are not
-	 * keyboards.
-	 *
-	 * SEE: include/linux/device.h (struct device)
-	 *      include/linux/input.h  (struct input_dev)
-	 */
 
 	if (strstr(dev->name, kbdstr)) {
 
@@ -144,9 +136,9 @@ static struct input_handler kbdlogger_handler = {
 static void __exit kbdlogger_exit(void)
 {
 	input_unregister_handler(&kbdlogger_handler);
-	device_destroy(kbdlogger.kbdclass, kbdlogger.devnum);
-	class_destroy(kbdlogger.kbdclass);
-	unregister_chrdev_region(kbdlogger.devnum, NUMDEVS);
+	unregister_chrdev_region(devnum, NUMDEVS);
+	device_destroy(kbdclass, devnum);
+	class_destroy(kbdclass);
 }
 
 static int __init kbdlogger_init(void)
@@ -155,9 +147,8 @@ static int __init kbdlogger_init(void)
 	int minor = 0;
 	int major = 0;
 
-	/* allocates a major and minor dynamically */
-	ret = alloc_chrdev_region(&kbdlogger.devnum, minor, NUMDEVS, DEVNAME);
-	major = MAJOR(kbdlogger.devnum);
+	ret = alloc_chrdev_region(&devnum, minor, NUMDEVS, DEVNAME);
+	major = MAJOR(devnum);
 
 	if (ret < 0) {
 		printk(KERN_ERR "[%s] can't get major %d\n", DEVNAME, major);
@@ -165,21 +156,25 @@ static int __init kbdlogger_init(void)
 		goto fail;
 	}
 
-	kbdlogger.kbdclass = class_create(THIS_MODULE, "logger");
-	if (IS_ERR(kbdlogger.kbddev)) {
+	kbdclass = class_create(THIS_MODULE, "logger");
+	if (IS_ERR(kbddev)) {
 		printk(KERN_DEBUG "Failed creating class\n");
 		ret = -ENOMEM;
 		goto fail;
 	}
 
-	kbdlogger.kbddev = device_create(kbdlogger.kbdclass,
-			NULL, kbdlogger.devnum, NULL, DEVNAME);
+	kbddev = device_create(kbdclass,
+			NULL, devnum, NULL, DEVNAME);
 
 	if (input_register_handler(&kbdlogger_handler)) {
 		printk(KERN_DEBUG "Failed creating class\n");
 		ret = -ENOMEM;
 		goto fail;
 	}
+
+	kobj.parent = &kbddev->kobj;
+	if(kobject_set_name(&kobj, "kbdlogger"))
+		goto fail;
 
 	return 0;
 fail:
