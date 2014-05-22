@@ -43,6 +43,8 @@ const char *kbdstr = "keyboard";
 struct kobject kobj;
 struct class   *kbdclass;
 struct device  *kbddev;
+struct cdev    kbdlogger_cdev;
+
 dev_t    devnum;
 uint64_t pressev;
 uint64_t relev;
@@ -52,6 +54,35 @@ char     *starttime;
 static int __init kbdlogger_init(void);
 
 static void __exit kbdlogger_exit(void);
+
+int kbdlogger_open(struct inode *inode, struct file *filp);
+
+int kbdlogger_release(struct inode *inode, struct file *filp);
+
+ssize_t kbdlogger_read(struct file *f, char __user *u, size_t size, loff_t *l);
+
+static struct file_operations kbdlogger_fops = {
+	.owner   = THIS_MODULE,
+	.open    = kbdlogger_open,
+	.release = kbdlogger_release,
+	.read    = kbdlogger_read,
+};
+
+int kbdlogger_open(struct inode *inode, struct file *filp)
+{
+	return 0;
+}
+
+int kbdlogger_release(struct inode *inode, struct file *filp)
+{
+	return 0;
+}
+
+ssize_t kbdlogger_read(struct file *f, char __user *u, size_t size, loff_t *l)
+{
+	return 0;
+}
+
 
 static int kbdlogger_connect(struct input_handler *handler, struct input_dev *dev,
 		const struct input_device_id *id)
@@ -136,30 +167,42 @@ static struct input_handler kbdlogger_handler = {
 static void __exit kbdlogger_exit(void)
 {
 	input_unregister_handler(&kbdlogger_handler);
-	unregister_chrdev_region(devnum, NUMDEVS);
 	device_destroy(kbdclass, devnum);
 	class_destroy(kbdclass);
+	cdev_del(&kbdlogger_cdev);
+	unregister_chrdev_region(devnum, NUMDEVS);
 }
 
 static int __init kbdlogger_init(void)
 {
-	int ret;
+	int err;
 	int minor = 0;
 	int major = 0;
 
-	ret = alloc_chrdev_region(&devnum, minor, NUMDEVS, DEVNAME);
+	err = alloc_chrdev_region(&devnum, minor, NUMDEVS, DEVNAME);
 	major = MAJOR(devnum);
 
-	if (ret < 0) {
+	if (err < 0) {
 		printk(KERN_ERR "[%s] can't get major %d\n", DEVNAME, major);
-		ret = -ENOMEM;
+		err = -ENOMEM;
 		goto fail;
 	}
 
 	kbdclass = class_create(THIS_MODULE, "logger");
 	if (IS_ERR(kbddev)) {
 		printk(KERN_DEBUG "Failed creating class\n");
-		ret = -ENOMEM;
+		err = -ENOMEM;
+		goto fail;
+	}
+
+	cdev_init(&kbdlogger_cdev, &kbdlogger_fops);
+	kbdlogger_cdev.owner = THIS_MODULE;
+
+	err = cdev_add(&kbdlogger_cdev, devnum, minor);
+
+	if (err) {
+		printk(KERN_ERR "[%s] Error %d adding /dev/%s\n",
+				DEVNAME, err, DEVNAME);
 		goto fail;
 	}
 
@@ -168,7 +211,7 @@ static int __init kbdlogger_init(void)
 
 	if (input_register_handler(&kbdlogger_handler)) {
 		printk(KERN_DEBUG "Failed creating class\n");
-		ret = -ENOMEM;
+		err = -ENOMEM;
 		goto fail;
 	}
 
@@ -179,7 +222,7 @@ static int __init kbdlogger_init(void)
 	return 0;
 fail:
 	kbdlogger_exit();
-	return ret;
+	return err;
 }
 
 module_init(kbdlogger_init);
