@@ -30,6 +30,8 @@
 #include <linux/cdev.h>
 #include <linux/kobject.h>
 #include <linux/time.h>
+#include <linux/pci.h>
+#include <linux/platform_device.h>
 #include <asm/uaccess.h>
 
 MODULE_AUTHOR("Rafael do Nascimento Pereira <rnp@25ghz.net>");
@@ -44,8 +46,9 @@ const char *kbdstr = "keyboard";
 struct kobject kobj;
 struct class   *kbdclass;
 struct device  *kbddev;
-struct cdev    kbdlogger_cdev;
 struct input_event keyev;
+struct input_dev   *kbd_input_dev;
+struct platform_device *kbd_plat_dev;
 
 dev_t devnum;
 u64   pressev;
@@ -56,34 +59,6 @@ char  *starttime;
 static int __init kbdlogger_init(void);
 
 static void __exit kbdlogger_exit(void);
-
-int kbdlogger_open(struct inode *inode, struct file *filp);
-
-int kbdlogger_release(struct inode *inode, struct file *filp);
-
-ssize_t kbdlogger_read(struct file *f, char __user *u, size_t size, loff_t *l);
-
-static struct file_operations kbdlogger_fops = {
-	.owner   = THIS_MODULE,
-	.open    = kbdlogger_open,
-	.release = kbdlogger_release,
-	.read    = kbdlogger_read,
-};
-
-int kbdlogger_open(struct inode *inode, struct file *filp)
-{
-	return 0;
-}
-
-int kbdlogger_release(struct inode *inode, struct file *filp)
-{
-	return 0;
-}
-
-ssize_t kbdlogger_read(struct file *f, char __user *u, size_t size, loff_t *l)
-{
-	return 0;
-}
 
 
 static int kbdlogger_connect(struct input_handler *handler, struct input_dev *dev,
@@ -174,57 +149,17 @@ static struct input_handler kbdlogger_handler = {
 static void __exit kbdlogger_exit(void)
 {
 	input_unregister_handler(&kbdlogger_handler);
-	device_destroy(kbdclass, devnum);
-	class_destroy(kbdclass);
-	cdev_del(&kbdlogger_cdev);
-	unregister_chrdev_region(devnum, NUMDEVS);
 }
 
 static int __init kbdlogger_init(void)
 {
 	int err;
-	int minor = 0;
-	int major = 0;
-
-	err = alloc_chrdev_region(&devnum, minor, NUMDEVS, DEVNAME);
-	major = MAJOR(devnum);
-
-	if (err < 0) {
-		printk(KERN_ERR "[%s] can't get major %d\n", DEVNAME, major);
-		err = -ENOMEM;
-		goto fail;
-	}
-
-	kbdclass = class_create(THIS_MODULE, "logger");
-	if (IS_ERR(kbddev)) {
-		printk(KERN_DEBUG "Failed creating class\n");
-		err = -ENOMEM;
-		goto fail;
-	}
-
-	cdev_init(&kbdlogger_cdev, &kbdlogger_fops);
-	kbdlogger_cdev.owner = THIS_MODULE;
-
-	err = cdev_add(&kbdlogger_cdev, devnum, minor);
-
-	if (err) {
-		printk(KERN_ERR "[%s] Error %d adding /dev/%s\n",
-				DEVNAME, err, DEVNAME);
-		goto fail;
-	}
-
-	kbddev = device_create(kbdclass,
-			NULL, devnum, NULL, DEVNAME);
 
 	if (input_register_handler(&kbdlogger_handler)) {
 		printk(KERN_DEBUG "Failed creating class\n");
 		err = -ENOMEM;
 		goto fail;
 	}
-
-	kobj.parent = &kbddev->kobj;
-	if(kobject_set_name(&kobj, "kbdlogger"))
-		goto fail;
 
 	pressev = 0;
 	return 0;
