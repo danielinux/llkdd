@@ -28,10 +28,13 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <ctype.h>
 
 #define NUM_THREADS 4
 #define INT_LEN    13
 #define DEVFILE    "/dev/intn"
+
+const char *opthelp = "-h\0";
 
 struct tdata {
 	uint32_t tnum;
@@ -87,19 +90,38 @@ void *inc_devintn(void *data)
 	pthread_exit(NULL);
 }
 
+void help(void)
+{
+	fprintf(stderr,
+		"llkdd  Copyright (C) 2014 Rafael do Nascimento Pereira\n"
+		"intn device driver userspace test programm\n\n"
+		"text_intn <thread_number>\n"
+		"  <thread_number>:  concurrent threads accessing /dev/intn\n"
+		"                    if not specified default to 4 threads.\n"
+		"  -h                show this help message\n");
+}
+
 int main(int argc, const char *argv[])
 {
 	uint32_t nthreads = NUM_THREADS;
 	uint32_t i;
 
 	if (argc > 1 && argv[1] != NULL) {
-		nthreads = (uint32_t)atoi(argv[1]);
+		if (!strncmp(argv[1], opthelp, strlen(opthelp))) {
+			help();
+			return 0;
+		} else if (atoi(argv[1]) > 0) {
+			nthreads = (uint32_t)atoi(argv[1]);
+			printf("atoi=%du\n", nthreads);
+		} else {
+			printf("invalid option. exiting..\n");
+			return -1;
+		}
 	}
 
 	uint32_t ret[nthreads];
 	pthread_t threads[nthreads];
 	struct tdata mydata[nthreads];
-	printf("creating %u threads\n", nthreads);
 
 	for(i = 0; i < nthreads; i++){
 		mydata[i].tnum = i,
