@@ -66,7 +66,6 @@ static int kbdlogger_connect(struct input_handler *handler, struct input_dev *de
 {
 	struct input_handle *handle;
 	int error;
-	struct device *device;
 
 	if (strstr(dev->name, kbdstr)) {
 
@@ -90,11 +89,6 @@ static int kbdlogger_connect(struct input_handler *handler, struct input_dev *de
 			dev_name(&dev->dev),
 			dev->name ?: "unknown",
 			dev->phys ?: "unknown");
-
-		device = &dev->dev;
-		printk(KERN_DEBUG pr_fmt("dev->dev->init_name: %s\ndevice type: %s\n"),
-			device->init_name  ?: "unknown",
-			device->type->name ?: "unknown");
 	}
 
 	return 0;
