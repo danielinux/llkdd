@@ -41,20 +41,14 @@ MODULE_DESCRIPTION("Input driver keyboard logger");
 #define NUMDEVS  1
 #define DEVNAME  "kbdlogger"
 
-const char *kbdstr = "keyboard";
-
 struct kobject kobj;
-struct class   *kbdclass;
-struct device  *kbddev;
 struct input_event keyev;
 struct input_dev   *kbd_input_dev;
 struct platform_device *kbd_plat_dev;
-
 dev_t devnum;
 u64   pressev;
-u64   relev;
-u64   autorepev;
 char  *starttime;
+const char *kbdstr = "keyboard";
 
 static int __init kbdlogger_init(void);
 
@@ -75,7 +69,7 @@ static int kbdlogger_connect(struct input_handler *handler, struct input_dev *de
 
 		handle->dev = dev;
 		handle->handler = handler;
-		handle->name = "kbdlogger";
+		handle->name = "kbdlogger_handle";
 		error = input_register_handle(handle);
 
 		if (error)
@@ -137,24 +131,57 @@ static struct input_handler kbdlogger_handler = {
 	.disconnect = kbdlogger_disconnect,
 	.event      = kbdlogger_event,
 	.id_table   = kbdlogger_ids,
-	.name       = "kbdlogger",
+	.name       = "kbdlogger_handler",
 };
 
 static void __exit kbdlogger_exit(void)
 {
 	input_unregister_handler(&kbdlogger_handler);
+
+	if (kbd_input_dev)
+		input_unregister_device(kbd_input_dev);
+
+	platform_device_unregister(kbd_plat_dev);
 }
 
 static int __init kbdlogger_init(void)
 {
 	int err;
 
-	if (input_register_handler(&kbdlogger_handler)) {
-		printk(KERN_DEBUG "Failed creating class\n");
+	kbd_plat_dev = platform_device_register_simple(DEVNAME, -1, NULL, 0);
+
+	if (!kbd_plat_dev) {
 		err = -ENOMEM;
 		goto fail;
 	}
 
+	/* Allocate a input device */
+	kbd_input_dev = input_allocate_device();
+
+	if (!kbd_input_dev) {
+		err = -ENOMEM;
+		goto fail;
+	}
+
+	set_bit(EV_KEY, kbd_input_dev->evbit);
+	kbd_input_dev->name = DEVNAME;
+
+	/* Register the new device in the input system */
+	if (input_register_device(kbd_input_dev)) {
+		printk(KERN_ERR "Failed input device register\n");
+		input_free_device(kbd_input_dev);
+		kbd_input_dev = NULL;
+		err = -ENOMEM;
+		goto fail;
+	}
+
+	if (input_register_handler(&kbdlogger_handler)) {
+		printk(KERN_ERR "Failed input handler register\n");
+		err = -ENOMEM;
+		goto fail;
+	}
+
+	memset(&keyev, 0, sizeof(struct input_event));
 	pressev = 0;
 	return 0;
 fail:
