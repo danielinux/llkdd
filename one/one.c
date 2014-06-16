@@ -62,7 +62,7 @@ struct one_dev {
 };
 
 /* define the driver file operations. These are function pointers used by
- * kernel when a call from user space is perfomed 
+ * kernel when a call from user space is perfomed
  */
 static struct file_operations one_fops = {
 	.owner   = THIS_MODULE,
@@ -96,24 +96,6 @@ int one_release(struct inode *inode, struct file *filp)
 int one_open(struct inode *inode, struct file *filp)
 {
 	return 0;
-}
-
-/* dealocate the drivers data and unload it from kernel space memory */
-static void __exit one_exit(void)
-{
-	dev_t dev;
-	dev = MKDEV(one_major, one_minor);
-
-	if (one->one_device)
-		device_destroy(one->one_class, dev);
-
-	if (one->one_class)
-		class_destroy(one->one_class);
-
-	cdev_del(&one->one_cdev);
-	kfree(one);
-	unregister_chrdev_region(dev, NR_DEVS);
-	printk(KERN_INFO "Removing %s driver", DEVNAME);
 }
 
 /*
@@ -169,10 +151,6 @@ static int __init one_init(void)
 		goto fail;
 	}
 
-	//one->one_device.attr = (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	//one->one_device->show = one->one_device->store = NULL;
-	//DEVICE_ATTR(one->one_device, (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH), NULL, NULL);
-
 	/* char device registration */
 	devno = MKDEV(one_major, one_minor);
 	cdev_init(&one->one_cdev, &one_fops);
@@ -188,9 +166,37 @@ static int __init one_init(void)
 
 	return 0;
 fail:
-	one_exit();
+	if (one->one_device)
+		device_destroy(one->one_class, dev);
+
+	if (one->one_class)
+		class_destroy(one->one_class);
+
+	cdev_del(&one->one_cdev);
+	kfree(one);
+	unregister_chrdev_region(dev, NR_DEVS);
 	return ret;
 }
+
+
+/* dealocate the drivers data and unload it from kernel space memory */
+static void __exit one_exit(void)
+{
+	dev_t dev;
+	dev = MKDEV(one_major, one_minor);
+
+	if (one->one_device)
+		device_destroy(one->one_class, dev);
+
+	if (one->one_class)
+		class_destroy(one->one_class);
+
+	cdev_del(&one->one_cdev);
+	kfree(one);
+	unregister_chrdev_region(dev, NR_DEVS);
+	printk(KERN_INFO "Removing %s driver", DEVNAME);
+}
+
 
 /* Declare the driver constructor/destructor */
 module_init(one_init);
