@@ -127,8 +127,9 @@ static int __init one_init(void)
 	one = kmalloc(sizeof(struct one_dev), GFP_KERNEL);
 
 	if (!one) {
+		unregister_chrdev_region(dev, NR_DEVS);
 		ret = -ENOMEM;
-		goto fail;
+		return ret;
 	}
 
 	memset(one, 0, sizeof(struct one_dev));
@@ -142,7 +143,7 @@ static int __init one_init(void)
 		goto fail;
 	}
 
-	/* creates the device class under /dev */
+	/* creates the device class under /dev in cooperation with udev */
 	one->one_device = device_create(one->one_class, NULL, dev, NULL, DEVNAME);
 
 	if (!one->one_device) {
@@ -166,13 +167,15 @@ static int __init one_init(void)
 
 	return 0;
 fail:
+	if (&one->one_cdev)
+		cdev_del(&one->one_cdev);
+
 	if (one->one_device)
 		device_destroy(one->one_class, dev);
 
 	if (one->one_class)
 		class_destroy(one->one_class);
 
-	cdev_del(&one->one_cdev);
 	kfree(one);
 	unregister_chrdev_region(dev, NR_DEVS);
 	return ret;
@@ -185,13 +188,15 @@ static void __exit one_exit(void)
 	dev_t dev;
 	dev = MKDEV(one_major, one_minor);
 
+	if (&one->one_cdev)
+		cdev_del(&one->one_cdev);
+
 	if (one->one_device)
 		device_destroy(one->one_class, dev);
 
 	if (one->one_class)
 		class_destroy(one->one_class);
 
-	cdev_del(&one->one_cdev);
 	kfree(one);
 	unregister_chrdev_region(dev, NR_DEVS);
 	printk(KERN_INFO "Removing %s driver", DEVNAME);
