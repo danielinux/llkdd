@@ -165,6 +165,26 @@ int intn_open(struct inode *inode, struct file *filp)
 	return 0;
 }
 
+void intn_cleanup(void)
+{
+	dev_t dev;
+	dev = MKDEV(intn_major, intn_minor);
+
+	if (&intn->intn_cdev)
+		cdev_del(&intn->intn_cdev);
+
+	if (intn->intn_device)
+		device_destroy(intn->intn_class, dev);
+
+	if (intn->intn_class)
+		class_destroy(intn->intn_class);
+
+	if (intn)
+		kfree(intn);
+
+	unregister_chrdev_region(dev, NR_DEVS);
+}
+
 /*
  * Initializes the driver and create the /dev/ and /sys/ files. For further
  * information see:
@@ -242,7 +262,7 @@ static int __init intn_init(void)
 
 	return 0;
 fail:
-	intn_exit();
+	intn_cleanup();
 	return ret;
 }
 
@@ -250,18 +270,7 @@ fail:
 /* dealocate the drivers data and unload it from kernel space memory */
 static void __exit intn_exit(void)
 {
-	dev_t dev;
-	dev = MKDEV(intn_major, intn_minor);
-
-	if (intn->intn_device)
-		device_destroy(intn->intn_class, dev);
-
-	if (intn->intn_class)
-		class_destroy(intn->intn_class);
-
-	cdev_del(&intn->intn_cdev);
-	unregister_chrdev_region(dev, NR_DEVS);
-	kfree(intn);
+	intn_cleanup();
 	printk(KERN_ERR "[%s] exiting\n", DEVNAME);
 }
 
