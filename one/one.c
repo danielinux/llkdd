@@ -99,6 +99,28 @@ int one_open(struct inode *inode, struct file *filp)
 }
 
 /*
+ * Allocated resources cleanup.
+ */
+void one_cleanup(void)
+{
+	dev_t dev;
+	dev = MKDEV(one_major, one_minor);
+
+	if (&one->one_cdev)
+		cdev_del(&one->one_cdev);
+
+	if (one->one_device)
+		device_destroy(one->one_class, dev);
+
+	if (one->one_class)
+		class_destroy(one->one_class);
+
+	if (one)
+		kfree(one);
+	unregister_chrdev_region(dev, NR_DEVS);
+}
+
+/*
  * Initializes the driver and create the /dev/ and /sys/ files. For further
  * information see:
  *
@@ -167,17 +189,7 @@ static int __init one_init(void)
 
 	return 0;
 fail:
-	if (&one->one_cdev)
-		cdev_del(&one->one_cdev);
-
-	if (one->one_device)
-		device_destroy(one->one_class, dev);
-
-	if (one->one_class)
-		class_destroy(one->one_class);
-
-	kfree(one);
-	unregister_chrdev_region(dev, NR_DEVS);
+	one_cleanup();
 	return ret;
 }
 
@@ -185,20 +197,7 @@ fail:
 /* dealocate the drivers data and unload it from kernel space memory */
 static void __exit one_exit(void)
 {
-	dev_t dev;
-	dev = MKDEV(one_major, one_minor);
-
-	if (&one->one_cdev)
-		cdev_del(&one->one_cdev);
-
-	if (one->one_device)
-		device_destroy(one->one_class, dev);
-
-	if (one->one_class)
-		class_destroy(one->one_class);
-
-	kfree(one);
-	unregister_chrdev_region(dev, NR_DEVS);
+	one_cleanup();
 	printk(KERN_INFO "Removing %s driver", DEVNAME);
 }
 
