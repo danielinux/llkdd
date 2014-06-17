@@ -1,6 +1,6 @@
 ## Learning Linux Kernel Device Drivers
 
-Last update: 2014.05.21 (Mi) 06:59:48 (UTC +0200 CEST)
+Last update: 2014.06.17 (Tu) 15:57:21 (UTC +0200 CEST)
 
 ### What is this about ?
 
@@ -95,5 +95,18 @@ tail -f /var/log/kern.log
 ```
 
 if you use syslog-ng.
+
+### Current Status
+
+Here is a short summary about the current drivers beeing developed and its status.
+
+
+|    driver     |  code  | documentation |
+|---------------|--------|---------------|
+|  helloworld   |  100%  |      95%      |
+|    one        |  100%  |      50%      |
+|    intn       |   90%  |       0%      |
+|   keylogger   |   60%  |       0%      |
+
 
 See more infos at the project [wiki page](https://github.com/rafaelnp/llkdd/wiki).
