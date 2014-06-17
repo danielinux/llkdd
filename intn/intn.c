@@ -15,7 +15,7 @@
  *
  * Dummy character device driver an extended version of /dev/one. It
  * implements concurrency management. Every time a process reads/writes from/to
- * it, a mutex is set, so a value can be read/written. 
+ * it, a mutex is set, so a value can be read/written.
  */
 
 #include <linux/init.h>
@@ -28,8 +28,6 @@
 #include <linux/string.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
-#include <linux/proc_fs.h>
-#include <linux/fcntl.h>
 #include <asm/uaccess.h>
 
 
@@ -60,10 +58,6 @@ ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l)
 
 int intn_release(struct inode *inode, struct file *filp);
 
-static int __init intn_init(void);
-
-static void __exit intn_exit(void);
-
 struct intn_dev {
 	struct cdev intn_cdev;
 	struct class *intn_class;
@@ -72,7 +66,7 @@ struct intn_dev {
 };
 
 /* define the driver file operations. These are function pointers used by
- * kernel when a call from user space is perfomed 
+ * kernel when a call from user space is perfomed
  */
 static struct file_operations intn_fops = {
 	.owner   = THIS_MODULE,
@@ -122,7 +116,7 @@ ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l)
 	memset(ctmp, 0, INT_LEN);
 
 	/* copy the buffer from user space */
-	if (copy_from_user(&ctmp, u, INT_LEN) < 0) { 
+	if (copy_from_user(&ctmp, u, INT_LEN) < 0) {
 		printk(KERN_ERR "[%s] Error copying buffer to userspace\n", DEVNAME);
 		return -EFAULT;
 	} else {
