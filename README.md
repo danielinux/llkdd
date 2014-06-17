@@ -101,12 +101,12 @@ if you use syslog-ng.
 Here is a short summary about the current drivers beeing developed and its status.
 
 
-|    driver     |  code  | documentation |
-|---------------|--------|---------------|
-|  helloworld   |  100%  |      95%      |
-|    one        |  100%  |      50%      |
-|    intn       |   90%  |       0%      |
-|   keylogger   |   60%  |       0%      |
+|    driver     |   code   |  documentation  |
+|---------------|----------|-----------------|
+|  helloworld   |   100%   |       95%       |
+|    one        |   100%   |       50%       |
+|    intn       |    90%   |        0%       |
+|   keylogger   |    60%   |        0%       |
 
 
 See more infos at the project [wiki page](https://github.com/rafaelnp/llkdd/wiki).
