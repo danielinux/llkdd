@@ -50,10 +50,6 @@ u64   pressev;
 char  *starttime;
 const char *kbdstr = "keyboard";
 
-static int __init kbdlogger_init(void);
-
-static void __exit kbdlogger_exit(void);
-
 
 static int kbdlogger_connect(struct input_handler *handler, struct input_dev *dev,
 		const struct input_device_id *id)
@@ -134,7 +130,7 @@ static struct input_handler kbdlogger_handler = {
 	.name       = "kbdlogger_handler",
 };
 
-static void __exit kbdlogger_exit(void)
+static void kbdlogger_cleanup(void)
 {
 	input_unregister_handler(&kbdlogger_handler);
 
@@ -185,9 +181,16 @@ static int __init kbdlogger_init(void)
 	pressev = 0;
 	return 0;
 fail:
-	kbdlogger_exit();
+	kbdlogger_cleanup();
 	return err;
 }
+
+
+static void __exit kbdlogger_exit(void)
+{
+	kbdlogger_cleanup();
+}
+
 
 module_init(kbdlogger_init);
 module_exit(kbdlogger_exit);
