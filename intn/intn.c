@@ -38,7 +38,7 @@ MODULE_DESCRIPTION("intn driver");
 MODULE_VERSION("0.1");
 
 #define DEVNAME "intn"
-#define CLASSNAME "dummy"
+#define CLASSNAME "dummy2"
 #define NR_DEVS 1
 #define INIT_VALUE 25
 #define INT_LEN  12
@@ -75,9 +75,7 @@ static struct file_operations intn_fops = {
 	.open    = intn_open,
 	.release = intn_release,
 };
-
 struct intn_dev *intn = NULL;
-
 
 /* The read() file opetation, it returns only a "1" character to user space */
 ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l)
