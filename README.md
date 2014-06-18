@@ -101,11 +101,15 @@ if you use syslog-ng.
 
 Copy the udev rules file, as root, to the udev configuration directory:
 
-`sudo cp -v 10-llkdd.rules /etc/udev/rules.d`
+```sh
+sudo cp -v 10-llkdd.rules /etc/udev/rules.d
+```
 
 and update the udev configuration by running:
 
-`sudo udevadm control --reload-rules`
+```sh
+sudo udevadm control --reload-rules
+```
 
 
 ### Current Status
