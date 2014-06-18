@@ -1,6 +1,6 @@
 ## Learning Linux Kernel Device Drivers
 
-Last update: 2014.06.17 (Tu) 15:57:21 (UTC +0200 CEST)
+Last update: 2014.06.18 (Tu) 16:57:21 (UTC +0200 CEST)
 
 ### What is this about ?
 
@@ -16,7 +16,7 @@ critiques, contributions are welcome. :)
 
 Before starting, it is import to have already experience with C programming.
 C is the Linux Kernel "Lingua Franca". Almost 97% the source code is written
-C and a very part in Assembly. A good knowledge about hardware standards and
+C and a small part in Assembly. A good knowledge about hardware standards and
 how it works is strongly recommended, specially for device drivers.
 
 ### Coding Style
@@ -88,6 +88,7 @@ In order to see the driver's messages in the kernel execute in a terminal:
 ```sh
 journalctl -f _TRANSPORT=kernel
 ```
+
 if you use systemd or:
 
 ```sh
@@ -95,6 +96,17 @@ tail -f /var/log/kern.log
 ```
 
 if you use syslog-ng.
+
+### Install the llkdd udev rules file
+
+Copy the udev rules file, as root, to the udev configuration directory:
+
+`sudo cp -v 10-llkdd.rules /etc/udev/rules.d`
+
+and update the udev configuration by running:
+
+`sudo udevadm control --reload-rules`
+
 
 ### Current Status
 
@@ -105,7 +117,7 @@ Here is a short summary about the current drivers beeing developed and its statu
 |---------------|----------|-----------------|
 |  helloworld   |   100%   |       95%       |
 |    one        |   100%   |       50%       |
-|    intn       |    90%   |        0%       |
+|    intn       |   100%   |        0%       |
 |   keylogger   |    60%   |        0%       |
 
 
