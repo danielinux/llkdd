@@ -28,8 +28,6 @@
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
-#include <linux/proc_fs.h>
-#include <linux/fcntl.h>
 #include <asm/uaccess.h>
 
 

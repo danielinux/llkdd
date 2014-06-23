@@ -23,9 +23,7 @@
 #include <linux/kernel.h>
 #include <linux/cdev.h>
 #include <linux/errno.h>
-#include <linux/types.h>
 #include <linux/device.h>
-#include <linux/string.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
 #include <asm/uaccess.h>
