@@ -95,7 +95,7 @@ void help(void)
 	fprintf(stderr,
 		"llkdd  Copyright (C) 2014 Rafael do Nascimento Pereira\n"
 		"intn device driver userspace test programm\n\n"
-		"text_intn <thread_number>\n"
+		"test_intn <thread_number>\n"
 		"  <thread_number>:  concurrent threads accessing /dev/intn\n"
 		"                    if not specified default to 4 threads.\n"
 		"  -h                show this help message\n");
@@ -112,7 +112,7 @@ int main(int argc, const char *argv[])
 			return 0;
 		} else if (atoi(argv[1]) > 0) {
 			nthreads = (uint32_t)atoi(argv[1]);
-			printf("atoi=%du\n", nthreads);
+			printf("Number of threads: %u\n", nthreads);
 		} else {
 			printf("invalid option. exiting..\n");
 			return -1;
@@ -126,7 +126,7 @@ int main(int argc, const char *argv[])
 	for(i = 0; i < nthreads; i++){
 		mydata[i].tnum = i,
 		memset(mydata[i].intn, 0, INT_LEN);
-		printf("In main: creating thread %u\n", i);
+		printf("Creating thread %u\n", i);
 		ret[i] = pthread_create(&threads[i], NULL, inc_devintn, &mydata[i]);
 
 		if (ret[i]){
