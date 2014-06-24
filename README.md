@@ -1,6 +1,6 @@
 ## Learning Linux Kernel Device Drivers
 
-Last update: 2014.06.18 (Tu) 16:57:21 (UTC +0200 CEST)
+Last update: 2014.06.24 (Tu) 16:27:11 (UTC +0200 CEST)
 
 ### What is this about ?
 
@@ -119,10 +119,11 @@ Here is a short summary about the current drivers beeing developed and its statu
 
 |    driver     |   code   |  documentation  |
 |---------------|----------|-----------------|
-|  helloworld   |   100%   |       95%       |
-|    one        |   100%   |       50%       |
-|    intn       |   100%   |        0%       |
-|   keylogger   |    60%   |        0%       |
+|  helloworld   |   100%   |       100%      |
+|    one        |   100%   |       95%       |
+|    intn       |   100%   |       10%       |
+|   keylogger   |    60%   |        5%       |
 
+The code status columns means how many of the planned features were implemented, it does not mean the code has no bugs !
 
 See more infos at the project [wiki page](https://github.com/rafaelnp/llkdd/wiki).
