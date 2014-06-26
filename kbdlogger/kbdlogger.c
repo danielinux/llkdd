@@ -137,7 +137,8 @@ static void kbdlogger_cleanup(void)
 	if (kbd_input_dev)
 		input_unregister_device(kbd_input_dev);
 
-	platform_device_unregister(kbd_plat_dev);
+	if (kbd_plat_dev)
+		platform_device_unregister(kbd_plat_dev);
 }
 
 static int __init kbdlogger_init(void)
