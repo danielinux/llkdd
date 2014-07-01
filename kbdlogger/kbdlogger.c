@@ -165,7 +165,7 @@ static int __init kbdlogger_init(void)
 
 	/* Register the new device in the input system */
 	if (input_register_device(kbd_input_dev)) {
-		printk(KERN_ERR "Failed input device register\n");
+		printk(KERN_ERR pr_fmt("Failed input device register\n"));
 		input_free_device(kbd_input_dev);
 		kbd_input_dev = NULL;
 		err = -ENOMEM;
@@ -173,7 +173,7 @@ static int __init kbdlogger_init(void)
 	}
 
 	if (input_register_handler(&kbdlogger_handler)) {
-		printk(KERN_ERR "Failed input handler register\n");
+		printk(KERN_ERR pr_fmt("Failed input handler register\n"));
 		err = -ENOMEM;
 		goto fail;
 	}
@@ -189,6 +189,7 @@ fail:
 
 static void __exit kbdlogger_exit(void)
 {
+	printk(KERN_INFO pr_fmt("exiting...\n"));
 	kbdlogger_cleanup();
 }
 
