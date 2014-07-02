@@ -144,15 +144,13 @@ static int __init one_init(void)
 	}
 
 	printk(KERN_INFO "%s<Major, Minor>: <%d, %d>\n", DEVNAME, MAJOR(dev), MINOR(dev));
-	one = kmalloc(sizeof(struct one_dev), GFP_KERNEL);
+	one = kzalloc(sizeof(struct one_dev), GFP_KERNEL);
 
 	if (!one) {
 		unregister_chrdev_region(dev, NR_DEVS);
 		ret = -ENOMEM;
 		return ret;
 	}
-
-	memset(one, 0, sizeof(struct one_dev));
 
 	/* creates the device class under /sys */
 	one->one_class = class_create(THIS_MODULE, CLASSNAME);
