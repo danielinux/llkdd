@@ -190,15 +190,13 @@ static int __init intn_init(void)
 	int devno = 0;
 	dev_t dev = 0;
 
-	intn = kmalloc(sizeof(struct intn_dev), GFP_KERNEL);
+	intn = kzalloc(sizeof(struct intn_dev), GFP_KERNEL);
 
 	if (!intn) {
 		printk(KERN_ERR pr_fmt("Error allocating memory\n"));
 		ret = -ENOMEM;
 		goto fail;
 	}
-
-	memset(intn, 0, sizeof(struct intn_dev));
 
 	/* allocates a major and minor dynamically */
 	ret = alloc_chrdev_region(&dev, intn_minor, NR_DEVS, DEVNAME);
