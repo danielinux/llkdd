@@ -32,7 +32,7 @@
 #include <linux/time.h>
 #include <linux/pci.h>
 #include <linux/platform_device.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 MODULE_AUTHOR("Rafael do Nascimento Pereira <rnp@25ghz.net>");
 MODULE_LICENSE("GPL");
@@ -51,8 +51,8 @@ char  *starttime;
 const char *kbdstr = "keyboard";
 
 
-static int kbdlogger_connect(struct input_handler *handler, struct input_dev *dev,
-		const struct input_device_id *id)
+static int kbdlogger_connect(struct input_handler *handler,
+		struct input_dev *dev, const struct input_device_id *id)
 {
 	struct input_handle *handle;
 	int error;
@@ -75,7 +75,7 @@ static int kbdlogger_connect(struct input_handler *handler, struct input_dev *de
 		if (error)
 			goto err_unregister_handle;
 
-		printk(KERN_DEBUG pr_fmt("Connected device: %s (%s at %s)\n"),
+		pr_debug(pr_fmt("Connected device: %s (%s at %s)\n"),
 			dev_name(&dev->dev),
 			dev->name ?: "unknown",
 			dev->phys ?: "unknown");
@@ -94,7 +94,7 @@ static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 			unsigned int code, int value)
 {
 	if (type == EV_KEY) {
-		printk(KERN_DEBUG pr_fmt("Key event. Dev: %s, Type: %d, Code: %d, Value: %d\n"),
+		pr_debug(pr_fmt("Key event. Dev: %s, Type: %d, Code: %d, Value: %d\n"),
 		dev_name(&handle->dev->dev), type, code, value);
 		pressev++;
 		keyev.value = value;
@@ -107,7 +107,7 @@ static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 
 static void kbdlogger_disconnect(struct input_handle *handle)
 {
-	printk(KERN_DEBUG pr_fmt("Disconnected device: %s\n"),
+	pr_debug(pr_fmt("Disconnected device: %s\n"),
 		dev_name(&handle->dev->dev));
 
 	input_close_device(handle);
@@ -165,7 +165,7 @@ static int __init kbdlogger_init(void)
 
 	/* Register the new device in the input system */
 	if (input_register_device(kbd_input_dev)) {
-		printk(KERN_ERR pr_fmt("Failed input device register\n"));
+		pr_err(pr_fmt("Failed input device register\n"));
 		input_free_device(kbd_input_dev);
 		kbd_input_dev = NULL;
 		err = -ENOMEM;
@@ -173,7 +173,7 @@ static int __init kbdlogger_init(void)
 	}
 
 	if (input_register_handler(&kbdlogger_handler)) {
-		printk(KERN_ERR pr_fmt("Failed input handler register\n"));
+		pr_err(pr_fmt("Failed input handler register\n"));
 		err = -ENOMEM;
 		goto fail;
 	}
@@ -189,7 +189,7 @@ fail:
 
 static void __exit kbdlogger_exit(void)
 {
-	printk(KERN_INFO pr_fmt("exiting...\n"));
+	pr_info(pr_fmt("exiting...\n"));
 	kbdlogger_cleanup();
 }
 
