@@ -26,7 +26,7 @@
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 
 /* Driver infos */
@@ -42,20 +42,12 @@ MODULE_VERSION("0.1");
 #define INT_LEN  12
 #define BASE10  10
 #define DEFAULT_INT "25"
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+/* #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt */
 
-static int intn_major = 0;
-static int intn_minor = 0;
-static int int_value = 0;
+static int intn_major;
+static int intn_minor;
+static int int_value;
 static char cint[INT_LEN];
-
-ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l);
-
-int intn_open(struct inode *inode, struct file *filp);
-
-ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l);
-
-int intn_release(struct inode *inode, struct file *filp);
 
 struct intn_dev {
 	struct cdev intn_cdev;
@@ -64,16 +56,6 @@ struct intn_dev {
 	struct mutex intn_mutex;
 };
 
-/* define the driver file operations. These are function pointers used by
- * kernel when a call from user space is perfomed
- */
-static struct file_operations intn_fops = {
-	.owner   = THIS_MODULE,
-	.read    = intn_read,
-	.write   = intn_write,
-	.open    = intn_open,
-	.release = intn_release,
-};
 struct intn_dev *intn = NULL;
 
 /* The read() file opetation, it returns only a "1" character to user space */
@@ -83,20 +65,20 @@ ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l)
 		return -EFAULT;
 
 	if (snprintf(cint, INT_LEN, "%d", int_value) < 0) {
-		printk(KERN_ERR pr_fmt("Conversion not possible, returning default value\n"));
+		pr_err(pr_fmt("Error converting, returning default value\n"));
 		if (!strncpy(cint, DEFAULT_INT, 3))
 			return -EFAULT;
 	}
 
 	/* copy the buffer to user space */
 	if (copy_to_user(u, cint, strlen(cint)) < 0) {
-		printk(KERN_ERR pr_fmt("Error copying buffer to userspace\n"));
+		pr_err(pr_fmt("Error copying buffer to userspace\n"));
 		return -EFAULT;
 	} else {
 		/* we return the number of written bytes, always 4 */
-		printk(KERN_ERR pr_fmt("Return %lu bytes to userspace\n"), strlen(cint));
-		printk(KERN_ERR pr_fmt("Value read: %d\n"), int_value);
-		return (strlen(cint));
+		pr_err(pr_fmt("Return %lu bytes to userspace\n"), strlen(cint));
+		pr_err(pr_fmt("Value read: %d\n"), int_value);
+		return strlen(cint);
 	}
 }
 
@@ -113,30 +95,31 @@ ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l)
 
 	/* copy the buffer from user space */
 	if (copy_from_user(&ctmp, u, INT_LEN) < 0) {
-		printk(KERN_ERR pr_fmt("Error copying buffer to userspace\n"));
+		pr_err(pr_fmt("Error copying buffer to userspace\n"));
 		return -EFAULT;
 	} else {
 		/* we return the number of written bytes, always 4 */
-		printk(KERN_ERR pr_fmt("Return %lu bytes from userspace\n"), strlen(ctmp));
+		pr_err(pr_fmt("Return %lu bytes from userspace\n"),
+				strlen(ctmp));
 	}
 
 	ret = kstrtol((const char *)&ctmp, BASE10, &long_tmp);
 
-	if (ret < 0 ) {
+	if (ret < 0) {
 		if (ret == LONG_MAX) {
-			printk(KERN_ERR pr_fmt("Overflow !\n"));
+			pr_err(pr_fmt("Overflow !\n"));
 			return -ERANGE;
 		} else if (ret == LONG_MIN) {
-			printk(KERN_ERR pr_fmt("Underflow !\n"));
+			pr_err(pr_fmt("Underflow !\n"));
 			return -ERANGE;
 		} else {
-			printk(KERN_ERR pr_fmt("Parsing error (invalid input)\n"));
+			pr_err(pr_fmt("Parsing error (invalid input)\n"));
 			return -EINVAL;
 		}
 	}
 
 	int_value = (int)long_tmp;
-	printk(KERN_ERR pr_fmt("Value stored: %d\n"), int_value);
+	pr_err(pr_fmt("Value stored: %d\n"), int_value);
 
 	return 0;
 }
@@ -154,9 +137,21 @@ int intn_open(struct inode *inode, struct file *filp)
 	return 0;
 }
 
+/* define the driver file operations. These are function pointers used by
+ * kernel when a call from user space is perfomed
+ */
+static const struct file_operations intn_fops = {
+	.owner   = THIS_MODULE,
+	.read    = intn_read,
+	.write   = intn_write,
+	.open    = intn_open,
+	.release = intn_release,
+};
+
 void intn_cleanup(void)
 {
 	dev_t dev;
+
 	dev = MKDEV(intn_major, intn_minor);
 
 	if (&intn->intn_cdev)
@@ -168,9 +163,7 @@ void intn_cleanup(void)
 	if (intn->intn_class)
 		class_destroy(intn->intn_class);
 
-	if (intn)
-		kfree(intn);
-
+	kfree(intn);
 	unregister_chrdev_region(dev, NR_DEVS);
 }
 
@@ -193,7 +186,7 @@ static int __init intn_init(void)
 	intn = kzalloc(sizeof(struct intn_dev), GFP_KERNEL);
 
 	if (!intn) {
-		printk(KERN_ERR pr_fmt("Error allocating memory\n"));
+		pr_err(pr_fmt("Error allocating memory\n"));
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -203,27 +196,30 @@ static int __init intn_init(void)
 	intn_major = MAJOR(dev);
 
 	if (ret < 0) {
-		printk(KERN_ERR pr_fmt("can't get major %d\n"), intn_major);
+		pr_err(pr_fmt("can't get major %d\n"), intn_major);
 		ret = -ENOMEM;
 		goto fail;
 	}
 
-	printk(KERN_INFO pr_fmt("device: <Major, Minor>: <%d, %d>\n"), MAJOR(dev), MINOR(dev));
+	pr_info(pr_fmt("device: <Major, Minor>: <%d, %d>\n"),
+			MAJOR(dev), MINOR(dev));
 
 	/* creates the device class under /sys */
 	intn->intn_class = class_create(THIS_MODULE, CLASSNAME);
 
 	if (!intn->intn_class) {
-		printk(KERN_ERR pr_fmt("Error creating device class %s\n"), DEVNAME);
+		pr_err(pr_fmt("Error creating device class %s\n"), DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
 
 	/* creates the device class under /dev */
-	intn->intn_device = device_create(intn->intn_class, NULL, dev, NULL, DEVNAME);
+	intn->intn_device = device_create(intn->intn_class,
+				NULL, dev, NULL, DEVNAME);
 
 	if (!intn->intn_device) {
-		printk(KERN_ERR pr_fmt("Error creating device %s\n"), DEVNAME);
+		pr_err(pr_fmt("Error creating device %s\n"),
+				DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -239,7 +235,7 @@ static int __init intn_init(void)
 	err = cdev_add(&intn->intn_cdev, devno, NR_DEVS);
 
 	if (err) {
-		printk(KERN_ERR pr_fmt("Error %d adding /dev/intn\n"), err);
+		pr_err(pr_fmt("Error %d adding /dev/intn\n"), err);
 		ret = err;
 		goto fail;
 	}
@@ -258,7 +254,7 @@ fail:
 static void __exit intn_exit(void)
 {
 	intn_cleanup();
-	printk(KERN_ERR pr_fmt("exiting\n"));
+	pr_err(pr_fmt("exiting\n"));
 }
 
 /* Declare the driver constructor/destructor */
