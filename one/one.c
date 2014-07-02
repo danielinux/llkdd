@@ -28,7 +28,7 @@
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 
 /* Driver infos */
@@ -42,31 +42,15 @@ MODULE_VERSION("0.1");
 #define NR_DEVS 1
 
 
-static int one_major = 0;
-static int one_minor = 0;
+static int one_major;
+static int one_minor;
 
 char c = 0;
-
-ssize_t one_read(struct file *f, char __user *u, size_t size, loff_t *l);
-
-int one_open(struct inode *inode, struct file *filp);
-
-int one_release(struct inode *inode, struct file *filp);
 
 struct one_dev {
 	struct cdev one_cdev;
 	struct device *one_device;
 	struct class *one_class;
-};
-
-/* define the driver file operations. These are function pointers used by
- * kernel when a call from user space is perfomed
- */
-static struct file_operations one_fops = {
-	.owner   = THIS_MODULE,
-	.read    = one_read,
-	.open    = one_open,
-	.release = one_release,
 };
 
 struct one_dev *one = NULL;
@@ -78,9 +62,10 @@ ssize_t one_read(struct file *f, char __user *u, size_t size, loff_t *l)
 	c = 1;
 
 	/* copy the buffer to user space */
-	if (copy_to_user(u, &c, 1) != 0)
+	if (copy_to_user(u, &c, 1) != 0) {
+		pr_err("error copying buffer to user space\n");
 		return -EFAULT;
-	else
+	} else
 		return 1;
 }
 
@@ -96,12 +81,23 @@ int one_open(struct inode *inode, struct file *filp)
 	return 0;
 }
 
+/* define the driver file operations. These are function pointers used by
+ * kernel when a call from user space is perfomed
+ */
+static const struct file_operations one_fops = {
+	.owner   = THIS_MODULE,
+	.read    = one_read,
+	.open    = one_open,
+	.release = one_release,
+};
+
 /*
  * Allocated resources cleanup.
  */
 void one_cleanup(void)
 {
 	dev_t dev;
+
 	dev = MKDEV(one_major, one_minor);
 
 	if (&one->one_cdev)
@@ -113,8 +109,7 @@ void one_cleanup(void)
 	if (one->one_class)
 		class_destroy(one->one_class);
 
-	if (one)
-		kfree(one);
+	kfree(one);
 	unregister_chrdev_region(dev, NR_DEVS);
 }
 
@@ -139,11 +134,12 @@ static int __init one_init(void)
 	one_major = MAJOR(dev);
 
 	if (ret < 0) {
-		printk(KERN_WARNING "one: can't get major %d\n", one_major);
+		pr_err(KERN_ERR "one: can't get major %d\n", one_major);
 		return ret;
 	}
 
-	printk(KERN_INFO "%s<Major, Minor>: <%d, %d>\n", DEVNAME, MAJOR(dev), MINOR(dev));
+	pr_info("%s<Major, Minor>: <%d, %d>\n",
+			DEVNAME, MAJOR(dev), MINOR(dev));
 	one = kzalloc(sizeof(struct one_dev), GFP_KERNEL);
 
 	if (!one) {
@@ -156,16 +152,17 @@ static int __init one_init(void)
 	one->one_class = class_create(THIS_MODULE, CLASSNAME);
 
 	if (!one->one_class) {
-		printk(KERN_ERR " Error creating device class %s", DEVNAME);
+		pr_err("Error creating device class %s", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
 
 	/* creates the device class under /dev in cooperation with udev */
-	one->one_device = device_create(one->one_class, NULL, dev, NULL, DEVNAME);
+	one->one_device = device_create(one->one_class, NULL,
+			dev, NULL, DEVNAME);
 
 	if (!one->one_device) {
-		printk(KERN_ERR " Error creating device %s", DEVNAME);
+		pr_err("Error creating device %s", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -178,7 +175,7 @@ static int __init one_init(void)
 	err = cdev_add(&one->one_cdev, devno, NR_DEVS);
 
 	if (err) {
-		printk(KERN_NOTICE "Error %d adding /dev/one", err);
+		pr_notice("Error %d adding /dev/one", err);
 		ret = err;
 		goto fail;
 	}
@@ -194,7 +191,7 @@ fail:
 static void __exit one_exit(void)
 {
 	one_cleanup();
-	printk(KERN_INFO "Removing %s driver", DEVNAME);
+	pr_info("Removing %s driver", DEVNAME);
 }
 
 
