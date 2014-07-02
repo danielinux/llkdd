@@ -8,20 +8,20 @@ MODULE_LICENSE("GPL");
  * the printk function (see include/linux/kernel.h) when it is load and
  * unloaded in the kernel space memory. You can see its output by typing
  * as the root user:
- * 
+ *
  * syslog systems:  tail -f /var/log/syslog
  *
- * systemd systems: journalctl -f 
+ * systemd systems: journalctl -f
  */
 static int hello_init(void)
 {
-	printk(KERN_ALERT "Hello, world\n");
+	pr_alert(KERN_ALERT "Hello, world\n");
 	return 0;
 }
 
 static void hello_exit(void)
 {
-	printk(KERN_ALERT "Goodbye, cruel world\n");
+	pr_alert(KERN_ALERT "Goodbye, cruel world\n");
 }
 
 /*
