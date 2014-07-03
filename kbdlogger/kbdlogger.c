@@ -41,15 +41,11 @@ MODULE_DESCRIPTION("Input driver keyboard logger");
 #define NUMDEVS  1
 #define DEVNAME  "kbdlogger"
 
-struct kobject kobj;
 struct input_event keyev;
-struct input_dev   *kbd_input_dev;
-struct platform_device *kbd_plat_dev;
 dev_t devnum;
 u64   pressev;
 char  *starttime;
 const char *kbdstr = "keyboard";
-
 
 static int kbdlogger_connect(struct input_handler *handler,
 		struct input_dev *dev, const struct input_device_id *id)
@@ -104,7 +100,6 @@ static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 	}
 }
 
-
 static void kbdlogger_disconnect(struct input_handle *handle)
 {
 	pr_info("Disconnected device: %s\n",
@@ -133,44 +128,11 @@ static struct input_handler kbdlogger_handler = {
 static void kbdlogger_cleanup(void)
 {
 	input_unregister_handler(&kbdlogger_handler);
-
-	if (kbd_input_dev)
-		input_unregister_device(kbd_input_dev);
-
-	if (kbd_plat_dev)
-		platform_device_unregister(kbd_plat_dev);
 }
 
 static int __init kbdlogger_init(void)
 {
 	int err;
-
-	kbd_plat_dev = platform_device_register_simple(DEVNAME, -1, NULL, 0);
-
-	if (!kbd_plat_dev) {
-		err = -ENOMEM;
-		goto fail;
-	}
-
-	/* Allocate a input device */
-	kbd_input_dev = input_allocate_device();
-
-	if (!kbd_input_dev) {
-		err = -ENOMEM;
-		goto fail;
-	}
-
-	set_bit(EV_KEY, kbd_input_dev->evbit);
-	kbd_input_dev->name = DEVNAME;
-
-	/* Register the new device in the input system */
-	if (input_register_device(kbd_input_dev)) {
-		pr_err("Failed input device register\n");
-		input_free_device(kbd_input_dev);
-		kbd_input_dev = NULL;
-		err = -ENOMEM;
-		goto fail;
-	}
 
 	if (input_register_handler(&kbdlogger_handler)) {
 		pr_err("Failed input handler register\n");
@@ -193,7 +155,6 @@ static void __exit kbdlogger_exit(void)
 	kbdlogger_cleanup();
 	pr_info("exited\n");
 }
-
 
 module_init(kbdlogger_init);
 module_exit(kbdlogger_exit);
