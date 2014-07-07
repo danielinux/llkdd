@@ -19,7 +19,6 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
-
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/input.h>
@@ -44,11 +43,19 @@ MODULE_DESCRIPTION("Input driver keyboard logger");
 const char *kbdstr = "keyboard";
 struct input_handle *handle;
 
+struct kbdloggerdev {
+	struct input_handle handle;
+	struct device dev;
+	struct cdev   cdev;
+};
+
+struct kbdloggerdev *kldev;
+
 static void kbdlogger_cleanup(void)
 {
-	input_close_device(handle);
-	input_unregister_handle(handle);
-	kfree(handle);
+	input_close_device(&kldev->handle);
+	input_unregister_handle(&kldev->handle);
+	kfree(kldev);
 }
 
 static int kbdlogger_connect(struct input_handler *handler,
@@ -56,36 +63,39 @@ static int kbdlogger_connect(struct input_handler *handler,
 {
 	int error;
 
-	if (strstr(dev->name, kbdstr)) {
+	/* if the device is not a keyboard it is filtered out. */
+	if (!strstr(dev->name, kbdstr))
+		return 0;
 
-		handle = kzalloc(sizeof(struct input_handle), GFP_KERNEL);
-		if (!handle)
-			return -ENOMEM;
-
-		handle->dev = dev;
-		handle->handler = handler;
-		handle->name = "kbdlogger_handle";
-		error = input_register_handle(handle);
-
-		if (error)
-			goto err_free_handle;
-
-		error = input_open_device(handle);
-		if (error)
-			goto err_unregister_handle;
-
-		pr_info("Connected device: %s (%s at %s)\n",
-			dev_name(&dev->dev),
-			dev->name ?: "unknown",
-			dev->phys ?: "unknown");
+	kldev = kzalloc(sizeof(struct kbdloggerdev), GFP_KERNEL);
+	if (!kldev) {
+		error = -ENOMEM;
+		goto err_free_handle;
 	}
+
+	kldev->handle.dev = dev;
+	kldev->handle.handler = handler;
+	kldev->handle.name = "kbdlogger_handle";
+
+	error = input_register_handle(&kldev->handle);
+	if (error)
+		goto err_free_handle;
+
+	error = input_open_device(&kldev->handle);
+	if (error)
+		goto err_unregister_handle;
+
+	pr_info("Connected device: %s (%s at %s)\n",
+		dev_name(&dev->dev),
+		dev->name ?: "unknown",
+		dev->phys ?: "unknown");
 
 	return 0;
 
 err_unregister_handle:
-	input_unregister_handle(handle);
+	input_unregister_handle(&kldev->handle);
 err_free_handle:
-	kfree(handle);
+	kfree(kldev);
 	return error;
 }
 
@@ -103,7 +113,6 @@ static void kbdlogger_disconnect(struct input_handle *handle)
 	pr_info("Disconnected device: %s\n",
 		dev_name(&handle->dev->dev));
 	kbdlogger_cleanup();
-
 }
 
 static const struct input_device_id kbdlogger_ids[] = {
