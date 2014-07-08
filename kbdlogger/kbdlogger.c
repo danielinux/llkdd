@@ -32,6 +32,7 @@
 #include <linux/pci.h>
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
+#include <linux/major.h>
 
 MODULE_AUTHOR("Rafael do Nascimento Pereira <rnp@25ghz.net>");
 MODULE_LICENSE("GPL");
@@ -39,6 +40,11 @@ MODULE_DESCRIPTION("Input driver keyboard logger");
 
 #define NUMDEVS  1
 #define DEVNAME  "kbdlogger"
+
+#define EVDEV_MINOR_BASE	64
+#define EVDEV_MINORS		32
+#define EVDEV_MIN_BUFFER_SIZE	64U
+#define EVDEV_BUF_PACKETS	8
 
 const char *kbdstr = "keyboard";
 struct input_handle *handle;
@@ -51,10 +57,19 @@ struct kbdloggerdev {
 
 struct kbdloggerdev *kldev;
 
+
+static void kldev_release(struct device *dev)
+{
+}
+
 static void kbdlogger_cleanup(void)
 {
+	/* cdev_del(&kldev->cdev); */
+
 	input_close_device(&kldev->handle);
+	input_free_minor(MINOR(kldev->dev.devt));
 	input_unregister_handle(&kldev->handle);
+	put_device(&kldev->dev);
 	kfree(kldev);
 }
 
@@ -62,28 +77,54 @@ static int kbdlogger_connect(struct input_handler *handler,
 		struct input_dev *dev, const struct input_device_id *id)
 {
 	int error;
+	int minor;
+	int dev_no;
 
 	/* if the device is not a keyboard it is filtered out. */
 	if (!strstr(dev->name, kbdstr))
 		return 0;
 
+	minor = input_get_new_minor(EVDEV_MINOR_BASE, EVDEV_MINORS, true);
+	if (minor < 0) {
+		error = minor;
+		pr_err("failed to reserve new minor: %d\n", error);
+		return error;
+	}
+
 	kldev = kzalloc(sizeof(struct kbdloggerdev), GFP_KERNEL);
 	if (!kldev) {
 		error = -ENOMEM;
-		goto err_free_handle;
+		goto err_free_minor;
 	}
+
+	dev_no = minor;
+	/* Normalize device number if it falls into legacy range */
+	if (dev_no < EVDEV_MINOR_BASE + EVDEV_MINORS)
+		dev_no -= EVDEV_MINOR_BASE;
+	dev_set_name(&kldev->dev, "event%d", dev_no);
 
 	kldev->handle.dev = dev;
 	kldev->handle.handler = handler;
 	kldev->handle.name = "kbdlogger_handle";
+	kldev->handle.private = kldev;
+
+	kldev->dev.devt = MKDEV(INPUT_MAJOR, minor);
+	kldev->dev.class = &input_class;
+	kldev->dev.parent = &dev->dev;
+	kldev->dev.release = kldev_release;
+	device_initialize(&kldev->dev);
 
 	error = input_register_handle(&kldev->handle);
 	if (error)
-		goto err_free_handle;
+		goto err_cleanup_kldev;
+
+	/*
+	 * Initialize the cdev struct here
+	 */
 
 	error = input_open_device(&kldev->handle);
 	if (error)
-		goto err_unregister_handle;
+		goto err_cleanup_kldev;
 
 	pr_info("Connected device: %s (%s at %s)\n",
 		dev_name(&dev->dev),
@@ -92,10 +133,11 @@ static int kbdlogger_connect(struct input_handler *handler,
 
 	return 0;
 
-err_unregister_handle:
-	input_unregister_handle(&kldev->handle);
-err_free_handle:
-	kfree(kldev);
+err_free_minor:
+	input_free_minor(minor);
+	return error;
+err_cleanup_kldev:
+	kbdlogger_cleanup();
 	return error;
 }
 
