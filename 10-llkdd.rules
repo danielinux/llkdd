@@ -1,6 +1,8 @@
 # udev rules for the llkdd project
-# Last update: 2014.06.18 (Wed) 06:16:28 (UTC +0200 CEST)
+# Last update: 2014.07.08 (Tue) 16:34:28 (UTC +0200 CEST)
 
 KERNEL=="one", NAME="one", MODE="0644"
 
 KERNEL=="intn", NAME="intn", MODE="0666"
+
+KERNEL=="intn2", NAME="intn2", MODE="0666"
