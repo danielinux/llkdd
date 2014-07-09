@@ -206,7 +206,7 @@ static int __init intn2_init(void)
 	/* creates the device class under /sys */
 	intn2->intn2_class = class_create(THIS_MODULE, CLASSNAME);
 	if (!intn2->intn2_class) {
-		pr_err(pr_fmt("Error creating device class %s\n"), DEVNAME);
+		pr_err("Error creating device class %s\n", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
