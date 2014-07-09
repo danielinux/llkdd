@@ -42,7 +42,6 @@ MODULE_VERSION("0.1");
 #define INT_LEN  12
 #define BASE10  10
 #define DEFAULT_INT "25"
-/* #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt */
 
 static int intn_major;
 static int intn_minor;
@@ -65,19 +64,19 @@ ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l)
 		return -EFAULT;
 
 	if (snprintf(cint, INT_LEN, "%d", int_value) < 0) {
-		pr_err(pr_fmt("Error converting, returning default value\n"));
+		pr_err("Error converting, returning default value\n");
 		if (!strncpy(cint, DEFAULT_INT, 3))
 			return -EFAULT;
 	}
 
 	/* copy the buffer to user space */
 	if (copy_to_user(u, cint, strlen(cint)) < 0) {
-		pr_err(pr_fmt("Error copying buffer to userspace\n"));
+		pr_err("Error copying buffer to userspace\n");
 		return -EFAULT;
 	} else {
 		/* we return the number of written bytes, always 4 */
-		pr_err(pr_fmt("Return %lu bytes to userspace\n"), strlen(cint));
-		pr_err(pr_fmt("Value read: %d\n"), int_value);
+		pr_err("Return %lu bytes to userspace\n", strlen(cint));
+		pr_err("Value read: %d\n", int_value);
 		return strlen(cint);
 	}
 }
@@ -95,31 +94,30 @@ ssize_t intn_write(struct file *f, const char __user *u, size_t size, loff_t *l)
 
 	/* copy the buffer from user space */
 	if (copy_from_user(&ctmp, u, INT_LEN) < 0) {
-		pr_err(pr_fmt("Error copying buffer to userspace\n"));
+		pr_err("Error copying buffer to userspace\n");
 		return -EFAULT;
 	} else {
 		/* we return the number of written bytes, always 4 */
-		pr_err(pr_fmt("Return %lu bytes from userspace\n"),
-				strlen(ctmp));
+		pr_err("Return %lu bytes from userspace\n", strlen(ctmp));
 	}
 
 	ret = kstrtol((const char *)&ctmp, BASE10, &long_tmp);
 
 	if (ret < 0) {
 		if (ret == LONG_MAX) {
-			pr_err(pr_fmt("Overflow !\n"));
+			pr_err("Overflow !\n");
 			return -ERANGE;
 		} else if (ret == LONG_MIN) {
-			pr_err(pr_fmt("Underflow !\n"));
+			pr_err("Underflow !\n");
 			return -ERANGE;
 		} else {
-			pr_err(pr_fmt("Parsing error (invalid input)\n"));
+			pr_err("Parsing error (invalid input)\n");
 			return -EINVAL;
 		}
 	}
 
 	int_value = (int)long_tmp;
-	pr_err(pr_fmt("Value stored: %d\n"), int_value);
+	pr_err("Value stored: %d\n", int_value);
 
 	return 0;
 }
@@ -186,7 +184,7 @@ static int __init intn_init(void)
 	intn = kzalloc(sizeof(struct intn_dev), GFP_KERNEL);
 
 	if (!intn) {
-		pr_err(pr_fmt("Error allocating memory\n"));
+		pr_err("Error allocating memory\n");
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -196,19 +194,19 @@ static int __init intn_init(void)
 	intn_major = MAJOR(dev);
 
 	if (ret < 0) {
-		pr_err(pr_fmt("can't get major %d\n"), intn_major);
+		pr_err("can't get major %d\n", intn_major);
 		ret = -ENOMEM;
 		goto fail;
 	}
 
-	pr_info(pr_fmt("device: <Major, Minor>: <%d, %d>\n"),
+	pr_info("device: <Major, Minor>: <%d, %d>\n",
 			MAJOR(dev), MINOR(dev));
 
 	/* creates the device class under /sys */
 	intn->intn_class = class_create(THIS_MODULE, CLASSNAME);
 
 	if (!intn->intn_class) {
-		pr_err(pr_fmt("Error creating device class %s\n"), DEVNAME);
+		pr_err("Error creating device class %s\n", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -218,8 +216,7 @@ static int __init intn_init(void)
 				NULL, dev, NULL, DEVNAME);
 
 	if (!intn->intn_device) {
-		pr_err(pr_fmt("Error creating device %s\n"),
-				DEVNAME);
+		pr_err("Error creating device %s\n", DEVNAME);
 		ret = -ENOMEM;
 		goto fail;
 	}
@@ -235,7 +232,7 @@ static int __init intn_init(void)
 	err = cdev_add(&intn->intn_cdev, devno, NR_DEVS);
 
 	if (err) {
-		pr_err(pr_fmt("Error %d adding /dev/intn\n"), err);
+		pr_err("Error %d adding /dev/intn\n", err);
 		ret = err;
 		goto fail;
 	}
@@ -254,7 +251,7 @@ fail:
 static void __exit intn_exit(void)
 {
 	intn_cleanup();
-	pr_err(pr_fmt("exiting\n"));
+	pr_err("exiting\n");
 }
 
 /* Declare the driver constructor/destructor */
