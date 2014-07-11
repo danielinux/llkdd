@@ -60,7 +60,7 @@ struct intn2_dev {
 struct intn2_dev *intn2 = NULL;
 
 module_param(counter, int, 0664);
-MODULE_PARM_DESC(counter,"integer that holds the intn2 driver counter");
+MODULE_PARM_DESC(counter, "integer that holds the intn2 driver counter");
 
 ssize_t intn2_read(struct file *f, char __user *u, size_t size, loff_t *l)
 {
@@ -85,7 +85,8 @@ ssize_t intn2_read(struct file *f, char __user *u, size_t size, loff_t *l)
 	}
 }
 
-ssize_t intn2_write(struct file *f, const char __user *u, size_t size, loff_t *l)
+ssize_t intn2_write(struct file *f, const char __user *u, size_t size,
+		loff_t *l)
 {
 	int ret;
 	long long_tmp;
