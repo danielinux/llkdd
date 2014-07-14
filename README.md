@@ -1,6 +1,6 @@
 ## Learning Linux Kernel Device Drivers
 
-Last update: 2014.07.08 (Tue) 7:22:48 (UTC +0200 CEST)
+Last update: 2014.07.14 (Mo) 15:53:16 (UTC +0200 CEST)
 
 ### What is this about ?
 
@@ -121,9 +121,10 @@ Here is a short summary about the current drivers beeing developed and its statu
 |    driver     |   code   |  documentation  |
 |---------------|----------|-----------------|
 |  helloworld   |   100%   |       100%      |
-|    one        |   100%   |       95%       |
-|    intn       |   100%   |       10%       |
-|   keylogger   |    60%   |        5%       |
+|    one        |   100%   |       100%      |
+|    intn       |   100%   |       50%       |
+|    intn2      |   100%   |       10%       |
+|   keylogger   |    60%   |       10%       |
 
 The code status columns means how many of the planned features were implemented, it does not mean the code has no bugs !
 
