@@ -33,21 +33,25 @@
 #define INIT_VALUE 25
 #define DEVNAME    "intn_sysfs"
 
-static int int_value;
+static int counter = INIT_VALUE;
 static struct platform_device *intn_sysfs_dev;
 struct mutex intn_sysfs_mutex;
+
+module_param(counter, int, 0664);
+MODULE_PARM_DESC(counter, " integer that holds the intn_sysfs driver counter");
 
 ssize_t intn_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int ret;
 
 	mutex_lock(&intn_sysfs_mutex);
-	ret = sprintf(buf, "%d\n", int_value);
+	ret = sprintf(buf, "%d\n", counter);
 	mutex_unlock(&intn_sysfs_mutex);
 	return ret;
 }
 
-ssize_t intn_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+ssize_t intn_store(struct device *dev, struct device_attribute *attr,
+					const char *buf, size_t count)
 {
 //	int ret, tmp;
 
@@ -75,7 +79,7 @@ ssize_t intn_store(struct device *dev, struct device_attribute *attr, const char
 //			pr_err("not a digit\n");
 //			goto err_sscanf;
 //		}
-//		int_value = tmp;
+//		counter = tmp;
 //	}
 
 //	mutex_unlock(&intn_sysfs_mutex);
@@ -109,7 +113,6 @@ static int intn_sysfs_init(void)
 		goto err;
 
 	sysfs_create_group(&intn_sysfs_dev->dev.kobj, &intn_attr_group);
-	int_value = INIT_VALUE;
 	mutex_init(&intn_sysfs_mutex);
 	return 0;
 
