@@ -53,41 +53,20 @@ ssize_t intn_show(struct device *dev, struct device_attribute *attr, char *buf)
 ssize_t intn_store(struct device *dev, struct device_attribute *attr,
 					const char *buf, size_t count)
 {
-//	int ret, tmp;
+	int ret, tmp;
 
-	if (!buf)
-		return -ENOMEM;
+	mutex_lock(&intn_sysfs_mutex);
+	ret = kstrtouint(buf, 0, &tmp);
+	if (ret < 0)
+		goto err;
 
-//	mutex_lock(&intn_sysfs_mutex);
-//	ret = sscanf(buf, "%d", &tmp);
-//	pr_err("ret: %d\n", ret);
-//	pr_err("tmp: %d\n", tmp);
-//
-//	if (ret <= 0)
-//		goto err_sscanf;
-//	else if (ret == 1) {
-//		if (tmp >= INT_MAX) {
-//			ret = -ERANGE;
-//			pr_err("INT_MAX\n");
-//			goto err_sscanf;
-//		} else if (tmp <= INT_MIN) {
-//			ret = -ERANGE;
-//			pr_err("INT_MIN\n");
-//			goto err_sscanf;
-//		} else if (isdigit(tmp) == 0) {
-//			ret = -EINVAL;
-//			pr_err("not a digit\n");
-//			goto err_sscanf;
-//		}
-//		counter = tmp;
-//	}
+	counter = tmp;
+	mutex_unlock(&intn_sysfs_mutex);
+	return ret ? : count;
 
-//	mutex_unlock(&intn_sysfs_mutex);
-	return 0;
-
-//err_sscanf:
-//	mutex_unlock(&intn_sysfs_mutex);
-//	return ret;
+err:
+	mutex_unlock(&intn_sysfs_mutex);
+	return ret;
 }
 
 DEVICE_ATTR(intn, 0666, intn_show, intn_store);
