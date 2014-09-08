@@ -44,9 +44,10 @@ ssize_t intn_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int ret;
 
-	mutex_lock(&intn_sysfs_mutex);
+	mutex_lock(&dev->mutex);
+	pr_info("show - devname: %s\n", dev_name(dev));
 	ret = sprintf(buf, "%d\n", counter);
-	mutex_unlock(&intn_sysfs_mutex);
+	mutex_unlock(&dev->mutex);
 	return ret;
 }
 
@@ -55,21 +56,22 @@ ssize_t intn_store(struct device *dev, struct device_attribute *attr,
 {
 	int ret, tmp;
 
-	mutex_lock(&intn_sysfs_mutex);
+	mutex_lock(&dev->mutex);
+	pr_info("store - devname: %s\n", dev_name(dev));
 	ret = kstrtouint(buf, 0, &tmp);
 	if (ret < 0)
 		goto err;
 
 	counter = tmp;
-	mutex_unlock(&intn_sysfs_mutex);
+	mutex_unlock(&dev->mutex);
 	return ret ? : count;
 
 err:
-	mutex_unlock(&intn_sysfs_mutex);
+	mutex_unlock(&dev->mutex);
 	return ret;
 }
 
-DEVICE_ATTR(intn, 0666, intn_show, intn_store);
+static DEVICE_ATTR(intn, 0666, intn_show, intn_store);
 
 static struct attribute *intn_attrs[] = {
 	&dev_attr_intn.attr,
@@ -92,7 +94,7 @@ static int intn_sysfs_init(void)
 		goto err;
 
 	sysfs_create_group(&intn_sysfs_dev->dev.kobj, &intn_attr_group);
-	mutex_init(&intn_sysfs_mutex);
+	mutex_init(&intn_sysfs_dev->dev.mutex);
 	return 0;
 
 err:
