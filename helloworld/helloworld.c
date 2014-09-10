@@ -15,13 +15,13 @@ MODULE_LICENSE("GPL");
  */
 static int hello_init(void)
 {
-	pr_alert(KERN_ALERT "Hello, world\n");
+	pr_alert("Hello, world\n");
 	return 0;
 }
 
 static void hello_exit(void)
 {
-	pr_alert(KERN_ALERT "Goodbye, cruel world\n");
+	pr_alert("Goodbye, cruel world\n");
 }
 
 /*
