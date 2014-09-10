@@ -28,13 +28,6 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 
-
-/* Driver infos */
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Rafael do Nascimento Pereira <rnp@25ghz.net>");
-MODULE_DESCRIPTION("intn driver");
-MODULE_VERSION("0.1");
-
 #define DEVNAME "intn"
 #define CLASSNAME "dummy2"
 #define NR_DEVS 1
@@ -55,7 +48,7 @@ struct intn_dev {
 	struct mutex intn_mutex;
 };
 
-struct intn_dev *intn = NULL;
+struct intn_dev *intn;
 
 /* The read() file opetation, it returns only a "1" character to user space */
 ssize_t intn_read(struct file *f, char __user *u, size_t size, loff_t *l)
@@ -176,10 +169,10 @@ void intn_cleanup(void)
  */
 static int __init intn_init(void)
 {
-	int ret = 0;
-	int err = 0;
-	int devno = 0;
-	dev_t dev = 0;
+	int ret;
+	int err;
+	int devno;
+	dev_t dev;
 
 	intn = kzalloc(sizeof(struct intn_dev), GFP_KERNEL);
 
@@ -246,7 +239,6 @@ fail:
 	return ret;
 }
 
-
 /* dealocate the drivers data and unload it from kernel space memory */
 static void __exit intn_exit(void)
 {
@@ -254,6 +246,11 @@ static void __exit intn_exit(void)
 	pr_err("exiting\n");
 }
 
-/* Declare the driver constructor/destructor */
 module_init(intn_init);
 module_exit(intn_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Rafael do Nascimento Pereira <rnp@25ghz.net>");
+MODULE_DESCRIPTION("intn driver");
+MODULE_VERSION("0.1");
+
