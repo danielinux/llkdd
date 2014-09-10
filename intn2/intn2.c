@@ -31,18 +31,12 @@
 #include <linux/uaccess.h>
 
 
-/* Driver infos */
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Rafael do Nascimento Pereira <rnp@25ghz.net>");
-MODULE_DESCRIPTION("intn2 driver");
-MODULE_VERSION("0.1");
-
-#define DEVNAME "intn2"
-#define CLASSNAME "dummy2"
-#define NR_DEVS 1
-#define INIT_VALUE 25
-#define INT_LEN  12
-#define BASE10  10
+#define DEVNAME     "intn2"
+#define CLASSNAME   "dummy2"
+#define NR_DEVS     1
+#define INIT_VALUE  25
+#define INT_LEN     12
+#define BASE10      10
 #define DEFAULT_INT "25"
 
 static int intn2_major;
@@ -67,7 +61,7 @@ ssize_t intn2_read(struct file *f, char __user *u, size_t size, loff_t *l)
 	if (u == NULL)
 		return -EFAULT;
 
-	if (snprintf(cint, INT_LEN, "%d", counter) < 0) {
+	if (snprintf(cint, INT_LEN, "%d\n", counter) < 0) {
 		pr_err("Error converting, returning default value\n");
 		if (!strncpy(cint, DEFAULT_INT, 3))
 			return -EFAULT;
@@ -125,7 +119,7 @@ ssize_t intn2_write(struct file *f, const char __user *u, size_t size,
 	counter = (int)long_tmp;
 	pr_err("Value stored: %d\n", counter);
 
-	return 0;
+	return size;
 }
 
 int intn2_release(struct inode *inode, struct file *filp)
@@ -253,6 +247,11 @@ static void __exit intn2_exit(void)
 	pr_info("exiting\n");
 }
 
-/* Declare the driver constructor/destructor */
 module_init(intn2_init);
 module_exit(intn2_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Rafael do Nascimento Pereira <rnp@25ghz.net>");
+MODULE_DESCRIPTION("intn2 driver");
+MODULE_VERSION("0.1");
+
