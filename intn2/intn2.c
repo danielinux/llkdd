@@ -175,7 +175,8 @@ void intn2_cleanup(void)
  * include/fs.h
  */
 static int __init intn2_init(void)
-{ int ret = 0;
+{
+	int ret = 0;
 	int err = 0;
 	int devno = 0;
 	dev_t dev = 0;
