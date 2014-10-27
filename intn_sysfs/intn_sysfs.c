@@ -88,7 +88,7 @@ static int intn_sysfs_init(void)
 	int ret;
 
 	pr_alert("loading %s\n", DEVNAME);
-	intn_sysfs_dev = platform_device_register_simple("intn_sysfs", -1, NULL, 0);
+	intn_sysfs_dev = platform_device_register_simple(DEVNAME, -1, NULL, 0);
 	ret = PTR_ERR_OR_ZERO(intn_sysfs_dev);
 	if (ret)
 		goto err;
