@@ -1,5 +1,5 @@
 #
-# Makefile one driver
+# Makefile intn driver
 #
 
 TARGET = intn

@@ -28,24 +28,24 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 
-#define DEVNAME "intn"
-#define CLASSNAME "dummy2"
-#define NR_DEVS 1
-#define INIT_VALUE 25
-#define INT_LEN  12
-#define BASE10  10
-#define DEFAULT_INT "25"
+#define DEVNAME		"intn"
+#define CLASSNAME	"dummy2"
+#define NR_DEVS		1
+#define INIT_VALUE	25
+#define INT_LEN		12
+#define BASE10		10
+#define DEFAULT_INT	"25"
 
-static int intn_major;
-static int intn_minor;
-static int int_value;
+static int  intn_major;
+static int  intn_minor;
+static int  int_value;
 static char cint[INT_LEN];
 
 struct intn_dev {
-	struct cdev intn_cdev;
-	struct class *intn_class;
+	struct cdev   intn_cdev;
+	struct class  *intn_class;
 	struct device *intn_device;
-	struct mutex intn_mutex;
+	struct mutex  intn_mutex;
 };
 
 struct intn_dev *intn;
