@@ -40,10 +40,10 @@ MODULE_DESCRIPTION("Input driver keyboard logger");
 #define NUMDEVS  1
 #define DEVNAME  "kbdlogger"
 
-#define EVDEV_MINOR_BASE	64
-#define EVDEV_MINORS		32
-#define EVDEV_MIN_BUFFER_SIZE	64U
-#define EVDEV_BUF_PACKETS	8
+#define KBLDEV_MINOR_BASE	64
+#define KBLDEV_MINORS		32
+#define KBLDEV_MIN_BUFFER_SIZE	64U
+#define KBLDEV_BUF_PACKETS	8
 
 const char *kbdstr = "keyboard";
 
@@ -106,7 +106,7 @@ static int kbdlogger_connect(struct input_handler *handler,
 	if (!strstr(dev->name, kbdstr))
 		return 0;
 
-	minor = input_get_new_minor(EVDEV_MINOR_BASE, EVDEV_MINORS, true);
+	minor = input_get_new_minor(KBLDEV_MINOR_BASE, KBLDEV_MINORS, true);
 	if (minor < 0) {
 		error = minor;
 		pr_err("failed to reserve new minor: %d\n", error);
@@ -121,8 +121,8 @@ static int kbdlogger_connect(struct input_handler *handler,
 
 	dev_no = minor;
 	/* Normalize device number if it falls into legacy range */
-	if (dev_no < EVDEV_MINOR_BASE + EVDEV_MINORS)
-		dev_no -= EVDEV_MINOR_BASE;
+	if (dev_no < KBLDEV_MINOR_BASE + KBLDEV_MINORS)
+		dev_no -= KBLDEV_MINOR_BASE;
 	dev_set_name(&kbldev->dev, "event%d", dev_no);
 
 	kbldev->handle.dev = input_get_device(dev);  /* input_dev */
