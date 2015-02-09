@@ -51,6 +51,7 @@ struct kbldev {
 	struct input_handle handle;
 	struct device dev;
 	struct cdev cdev;
+	bool exist;
 };
 
 
@@ -78,6 +79,13 @@ static void kbldev_free(struct device *dev)
 
 	input_put_device(kbldev->handle.dev);
 	kfree(kbldev);
+}
+
+static void kbldev_mark_dead(struct kbldev *kbldev)
+{
+	mutex_lock(&kbldev->mutex);
+	kbldev->exist = false;
+	mutex_unlock(&kbldev->mutex);
 }
 
 static void kbdlogger_cleanup(struct kbldev *kbldev)
