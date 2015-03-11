@@ -1,6 +1,6 @@
 ## Learning Linux Kernel Device Drivers
 
-Last update: 2014.07.14 (Mo) 15:53:16 (UTC +0200 CEST)
+Last update: 2015.03.11 (Mi) 12:15:02 (UTC +0100 CET)
 
 ### What is this about ?
 
@@ -56,11 +56,12 @@ ln -s linux-stable linux
 
 ### Compiling the kernel
 
-This part is partially dependent from the Linus distro one uses. It is recommended
-to take a look at one's distro documentation for more details.
+On the llkdd wiki there is a
+[howto](https://github.com/rafaelnp/llkdd/wiki/Configuring,-compiling-and-installing-the-Linux-kernel)
+to compile and install the Linux kernel on the X86_64 archtecture.
 
 
-### Compile the code
+### Compile the llkdd code
 
 The default path for the current Kernel source code points to `$HOME/src/linux`.
 Put the kernel source code in this direcory or create a symlink to it. The next
@@ -124,6 +125,8 @@ Here is a short summary about the current drivers beeing developed and its statu
 |    one        |   100%   |       100%      |
 |    intn       |   100%   |       50%       |
 |    intn2      |   100%   |       10%       |
+|    procfs     |   100%   |        0%       |
+|    usbstick   |    20%   |        0%       |
 |   keylogger   |    60%   |       10%       |
 
 The code status columns means how many of the planned features were implemented, it does not mean the code has no bugs !
